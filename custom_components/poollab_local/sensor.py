@@ -1,6 +1,7 @@
 """Sensor platform for PoolLab Local."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -9,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ADDRESS, PERCENTAGE
+from homeassistant.const import CONF_ADDRESS, EntityCategory, PERCENTAGE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -22,6 +23,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN,
+    IDEAL_RANGE_HIGH,
+    IDEAL_RANGE_LOW,
+    IDEAL_RANGE_OK,
     IDEAL_RANGES,
     MANUFACTURER,
     MEASUREMENT_TYPES,
@@ -29,6 +33,16 @@ from .const import (
     MODEL,
 )
 from .coordinator import PoolLabCoordinator
+
+
+def _as_utc(timestamp: int | None) -> datetime | None:
+    """Convert a device unix timestamp to an aware datetime, or None if implausible."""
+    if not timestamp:
+        return None
+    try:
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        return None
 
 
 async def async_setup_entry(
@@ -41,7 +55,10 @@ async def async_setup_entry(
     address = entry.data[CONF_ADDRESS]
 
     known_types: set[int] = set()
-    entities: list[SensorEntity] = [PoolLabBatterySensor(coordinator, address)]
+    entities: list[SensorEntity] = [
+        PoolLabBatterySensor(coordinator, address),
+        PoolLabLastMeasurementSensor(coordinator, address),
+    ]
 
     # Recreate a sensor for every measurement type ever seen on this device
     # (from the entity registry), not just types present in the live
@@ -123,7 +140,8 @@ class PoolLabBatterySensor(PoolLabBaseEntity, SensorEntity):
     _attr_device_class = SensorDeviceClass.BATTERY
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_name = "Battery"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_name = "Batterij"
 
     def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
         super().__init__(coordinator, address)
@@ -148,6 +166,43 @@ class PoolLabBatterySensor(PoolLabBaseEntity, SensorEntity):
         return self._restored_value
 
 
+class PoolLabLastMeasurementSensor(PoolLabBaseEntity, SensorEntity):
+    """Timestamp of the most recent measurement stored on the device.
+
+    Lets automations act on staleness ("no water test for two weeks") instead
+    of only on the values themselves.
+    """
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_name = "Laatste meting"
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_last_measurement"
+        self._restored_value: datetime | None = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.state not in (None, "unknown", "unavailable"):
+            try:
+                self._restored_value = datetime.fromisoformat(last_state.state)
+            except ValueError:
+                self._restored_value = None
+
+    @property
+    def native_value(self) -> datetime | None:
+        measurements = (self.coordinator.data or {}).get("measurements", {})
+        timestamps = [
+            stamp
+            for record in measurements.values()
+            if (stamp := _as_utc(record.get("timestamp"))) is not None
+        ]
+        if timestamps:
+            return max(timestamps)
+        return self._restored_value
+
+
 class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
     """One sensor per measurement scenario seen on the device (e.g. pH, Free Chlorine)."""
 
@@ -163,10 +218,15 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             type_id, (f"Unknown scenario {type_id}", "ppm", 2)
         )
         self._attr_name = name
-        self._attr_native_unit_of_measurement = unit
         self._attr_unique_id = f"{address}_measure_{type_id}"
         if unit == "pH":
+            # SensorDeviceClass.PH only accepts `None` as its unit
+            # (DEVICE_CLASS_UNITS[PH] == {None}); passing "pH" makes HA log an
+            # "not a valid unit for the device class" warning per entity.
             self._attr_device_class = SensorDeviceClass.PH
+            self._attr_native_unit_of_measurement = None
+        else:
+            self._attr_native_unit_of_measurement = unit
 
         self._restored_value: float | None = None
         self._restored_attrs: dict[str, Any] = {}
@@ -184,6 +244,7 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
                 for key in (
                     "status",
                     "measure_id",
+                    "measured_at",
                     "ideal_low",
                     "ideal_high",
                     "ideal_range_status",
@@ -211,9 +272,16 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             return self._restored_attrs
 
         attrs: dict[str, Any] = {
-            "status": MEASURE_STATUS_NAMES.get(record["status"], "unknown"),
+            "status": MEASURE_STATUS_NAMES.get(record["status"], "onbekend"),
             "measure_id": record["measure_id"],
         }
+
+        # When the measurement was actually taken on the device. Without this
+        # there is no way to tell a reading from an hour ago from one taken
+        # three weeks ago, since the device is only read on demand.
+        measured_at = _as_utc(record.get("timestamp"))
+        if measured_at is not None:
+            attrs["measured_at"] = measured_at.isoformat()
 
         ideal_range = IDEAL_RANGES.get(self.type_id)
         if ideal_range is not None:
@@ -222,10 +290,10 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             attrs["ideal_high"] = ideal_high
             value = record["value"]
             if value < ideal_low:
-                attrs["ideal_range_status"] = "zu niedrig"
+                attrs["ideal_range_status"] = IDEAL_RANGE_LOW
             elif value > ideal_high:
-                attrs["ideal_range_status"] = "zu hoch"
+                attrs["ideal_range_status"] = IDEAL_RANGE_HIGH
             else:
-                attrs["ideal_range_status"] = "ok"
+                attrs["ideal_range_status"] = IDEAL_RANGE_OK
 
         return attrs

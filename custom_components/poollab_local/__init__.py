@@ -20,7 +20,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Forward platforms first, *then* attempt an initial refresh - and
     # don't let a failed refresh block setup. The device is often out of
-    # range or asleep between measurements, and the "Jetzt abrufen" button
+    # range or asleep between measurements, and the "Nu ophalen" button
     # plus restored sensor state cover that gap. Gating setup on a
     # successful BLE connection (as async_config_entry_first_refresh does)
     # would make the whole integration - including the button - unusable

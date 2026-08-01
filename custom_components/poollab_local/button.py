@@ -34,7 +34,7 @@ class PoolLabRefreshButton(CoordinatorEntity[PoolLabCoordinator], ButtonEntity):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Jetzt abrufen"
+    _attr_name = "Nu ophalen"
     _attr_device_class = ButtonDeviceClass.UPDATE
     _attr_entity_registry_enabled_default = True
 

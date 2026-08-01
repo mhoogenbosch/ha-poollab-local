@@ -1,95 +1,100 @@
 # PoolLab Local
 
-Lokale Bluetooth-Integration für **PoolLab 1.0** Wassertester in Home
-Assistant – über die offizielle BLE-API, ganz ohne Cloud.
+Lokale Bluetooth-integratie voor de **PoolLab 1.0** watertester in Home
+Assistant, via de officiële BLE-API — volledig zonder cloud.
 
-> **Status:** Dieser Code wurde anhand der offiziellen [PoolLab 1.0
-> Bluetooth API Dokumentation](https://poollab.org/static/api/BLE.pdf)
-> (Water-i.d. GmbH, Version 2) implementiert, aber **noch nicht an
-> echter Hardware getestet**. Bitte beim ersten Einsatz die Logs im
-> Auge behalten (`custom_components.poollab_local: debug` in
-> `configuration.yaml` unter `logger.logs`) und Probleme als Issue
-> melden.
+> **Fork.** Dit is een fork van
+> [mf76130/ha-poollab-local](https://github.com/mf76130/ha-poollab-local)
+> (v0.4.1) met bugfixes, een meettijdstip, offline parsertests en een
+> Nederlandse interface. Zie [CHANGELOG.md](CHANGELOG.md) voor de verschillen.
 
-## Funktionen
+## Waarom lokaal
 
-- Automatische Erkennung des PoolLab 1.0 über Home Assistants
-  Bluetooth-Integration (Service-UUID-Match)
-- Liest auf Knopfdruck (oder im langen Hintergrund-Intervall) alle
-  gespeicherten Messergebnisse vom Gerät aus
-  (`PCMD_API_GET_INFO` + `PCMD_API_GET_MEASURES`)
-- Legt pro gefundenem Messwert-Typ (pH, freies Chlor, Brom, …)
-  automatisch einen eigenen Sensor an – nur die jeweils neueste
-  Messung pro Typ wird als aktueller Wert übernommen
-- Batterie-Sensor
-- Button-Entität **"Jetzt abrufen"**, um sofort nach einer Messung
-  manuell einen BLE-Abruf auszulösen, statt auf den (bewusst langen)
-  Hintergrund-Poll zu warten
-- Volle Funktion ohne Internet/Cloud – funktioniert auch über einen
-  ESPHome-Bluetooth-Proxy, wenn der HA-Host selbst keinen Bluetooth-
-  Empfang hat
+De bekende PoolLab-integraties voor Home Assistant
+([dala318/python_poollab](https://github.com/dala318/python_poollab),
+[stefanh12/Poollab](https://github.com/stefanh12/Poollab)) halen hun gegevens
+op bij `labcom.cloud`. Dat betekent dat je eerst met de LabCOM-app naar de
+cloud moet synchroniseren voordat Home Assistant iets ziet.
 
-## Voraussetzungen
+Deze integratie praat rechtstreeks met het apparaat over Bluetooth LE. De
+fabrikant publiceert het protocol zelf
+([BLE.pdf](https://poollab.org/static/api/BLE.pdf), Water-i.d. GmbH, versie 2),
+dus er komt geen reverse-engineering aan te pas — en er gaat geen meetgegeven
+het huis uit.
 
-- Home Assistant mit aktivierter Bluetooth-Integration
-- Bluetooth-Empfang in Reichweite des PoolLab-Geräts (eingebauter
-  Adapter am HA-Host oder ein ESPHome Bluetooth-Proxy)
-- `bleak-retry-connector` (wird automatisch über `manifest.json`
-  installiert)
+## Functies
 
-## Installation über HACS
+- Automatische herkenning van de PoolLab 1.0 via de Bluetooth-integratie van
+  Home Assistant (match op service-UUID), inclusief ESPHome Bluetooth-proxy's
+- Leest op afroep alle opgeslagen metingen uit het flashgeheugen
+  (`GET_INFO` + `GET_MEASURES`)
+- Maakt per aangetroffen meetparameter automatisch een sensor aan (pH, vrij
+  chloor, broom, alkaliniteit, …); per parameter telt de nieuwste meting
+- Attribuut `measured_at` per sensor plus een aparte sensor **"Laatste meting"**
+- Batterijsensor
+- Knop **"Nu ophalen"** om direct na een meting uit te lezen
+- Waarden overleven een herstart van Home Assistant (`RestoreEntity`)
 
-1. HACS → drei Punkte oben rechts → **"Custom repositories"**
-2. Repository-URL eintragen:
-   `https://github.com/mf76130/ha-poollab-local`
-3. Kategorie: **Integration**
-4. In HACS nach "PoolLab Local" suchen, installieren, Home Assistant
-   neu starten
-5. **Einstellungen → Geräte & Dienste**: Wird das PoolLab-Gerät per
-   Bluetooth erkannt, erscheint automatisch ein Vorschlag zum
-   Einrichten. Andernfalls über "Integration hinzufügen" → "PoolLab
-   Local" manuell aus der Liste der sichtbaren Geräte auswählen.
+## Vereisten
 
-## Manuelle Installation
+- Home Assistant met de Bluetooth-integratie actief
+- Bluetooth-ontvangst binnen bereik van het apparaat: een adapter in de
+  HA-host, of een ESPHome Bluetooth-proxy met **`bluetooth_proxy: active: true`**
+  (actieve verbindingen zijn vereist — passief meeluisteren volstaat niet,
+  omdat het protocol een commando/antwoord-uitwisseling is)
 
-Den Ordner `custom_components/poollab_local` in das
-`custom_components`-Verzeichnis deiner Home-Assistant-Konfiguration
-kopieren und Home Assistant neu starten.
+## Installatie via HACS
 
-## Wie es technisch funktioniert
+1. HACS → drie puntjes rechtsboven → **Custom repositories**
+2. Repository: `https://github.com/mhoogenbosch/ha-poollab-local`, categorie
+   **Integration**
+3. Zoek "PoolLab Local", installeer, herstart Home Assistant
+4. **Instellingen → Apparaten en diensten**: staat de PoolLab aan en binnen
+   bereik, dan verschijnt hij als ontdekt apparaat. Anders via "Integratie
+   toevoegen" → "PoolLab Local"
 
-Das PoolLab 1.0 implementiert einen eigenen GATT-Service
-(`PoolLabSvc`) mit drei Characteristics für ein
-Command-and-Response-Schema:
+## Gebruik
 
-1. Befehl wird auf `CommandMOSI` geschrieben (Preamble `0xAB` + 16-Bit
-   Command-ID + Parameter)
-2. Das Gerät meldet per Notification auf `MISO_Signal`, dass eine
-   Antwort bereit ist
-3. Die eigentliche Antwort wird von `CommandMISO` gelesen
+De PoolLab schakelt zichzelf standaard na ongeveer 300 seconden uit, en
+accepteert maar één BLE-verbinding tegelijk. Het werkt daarom zo:
 
-Diese Integration ruft beim Polling zunächst `PCMD_API_GET_INFO` ab
-(liefert u.a. die Anzahl gespeicherter Ergebnisse und den
-Batteriestand) und liest anschließend alle Messergebnisse über
-`PCMD_API_GET_MEASURES` aus den 16 Flash-Zellen des Geräts.
+1. Doe je meting op het apparaat zoals gebruikelijk
+2. Druk binnen dat tijdvenster op **"Nu ophalen"** in Home Assistant
+3. De sensoren worden bijgewerkt met de nieuwste meting per parameter
 
-## Bekannte Einschränkungen
+Er is bewust **geen** achtergrond-polling: dat zou alleen maar Bluetooth-verkeer
+opleveren voor een apparaat dat een paar keer per week aanstaat, en botsen met
+de LabCOM-app. Wil je het toch, zet dan `UPDATE_INTERVAL_SECONDS` in
+`const.py` op een aantal seconden.
 
-- Es wird nur **gelesen** – Schreibbefehle wie Kontrast oder
-  Einheiten-Umschaltung (ppm/mg-L) sind im Code vorbereitet
-  (`const.py`), aber noch nicht als Services/Entities exponiert
-- Das Gerät erlaubt nur eine aktive BLE-Verbindung gleichzeitig –
-  während des Pollings kann sich z.B. die PoolLab-App nicht
-  gleichzeitig verbinden
-- **Kein automatisches Hintergrund-Polling.** Die Integration ruft den
-  Gerätestatus nur beim Einrichten einmalig ab und danach ausschließlich
-  auf Knopfdruck über die Button-Entität "Jetzt abrufen" – das vermeidet
-  unnötigen Bluetooth-Traffic und Verbindungskonflikte mit der LabCom App,
-  wenn das Gerät nur gelegentlich genutzt wird
-  (`UPDATE_INTERVAL_SECONDS = None` in `const.py`; bei Bedarf kann dort
-  stattdessen eine Sekundenzahl für ein festes Intervall eingetragen
-  werden)
+### Streefwaarden
 
-## Lizenz
+`IDEAL_RANGES` in `const.py` bepaalt de attributen `ideal_low`, `ideal_high` en
+`ideal_range_status` (`te laag` / `ok` / `te hoog`). De standaardwaarden zijn
+gangbare richtwaarden voor een privé-buitenbad met chloor — pas ze aan op je
+eigen situatie. Ze horen niet bij het BLE-protocol.
 
-Siehe `LICENSE` im Repository-Root.
+## Tests
+
+```bash
+python3 tests/test_parsers.py
+```
+
+Valideert de frame-parsers tegen synthetische protocolframes, zonder hardware
+en zonder HA-runtime.
+
+## Beperkingen
+
+- Alleen lezen. Schrijfcommando's (contrast, ppm/mg-L omschakelen, geheugen
+  wissen, klok zetten) zijn in `const.py` gedefinieerd maar niet als service
+  of entiteit ontsloten.
+- Tijdens het uitlezen kan de LabCOM-app niet gelijktijdig verbinden.
+- De integratie is gebouwd op de officiële protocoldocumentatie. Werkt er iets
+  niet, zet dan `custom_components.poollab_local: debug` onder `logger.logs`.
+
+## Licentie
+
+Zie [LICENSE](LICENSE). Met dank aan
+[mf76130](https://github.com/mf76130/ha-poollab-local) voor het oorspronkelijke
+werk en aan [kenavn](https://github.com/kenavn/esphome-poollab) voor de
+leesbare protocoltranscriptie.

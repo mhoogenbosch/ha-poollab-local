@@ -42,7 +42,7 @@ DEFAULT_TIMEOUT = 20  # seconds; BLE connect + command round trip can be slow
 # connection at a time and is typically used a few times a week at most,
 # so polling on a fixed schedule would just be needless Bluetooth traffic
 # and a source of connection conflicts with the LabCom app. Use the
-# "Jetzt abrufen" button entity right after taking a measurement instead.
+# "Nu ophalen" button entity right after taking a measurement instead.
 UPDATE_INTERVAL_SECONDS: int | None = None
 
 # --- Measurement status codes (per flash_measurement_result.measure_status) ---
@@ -52,22 +52,27 @@ MEASURE_STATUS_OVERRANGE = 2
 
 MEASURE_STATUS_NAMES = {
     MEASURE_STATUS_OK: "ok",
-    MEASURE_STATUS_UNDERRANGE: "underrange",
-    MEASURE_STATUS_OVERRANGE: "overrange",
+    MEASURE_STATUS_UNDERRANGE: "onder meetbereik",
+    MEASURE_STATUS_OVERRANGE: "boven meetbereik",
 }
 
-# --- Ideal ranges (target range for "healthy" pool water) ---
-# These are NOT part of the official BLE protocol - the device itself only
-# knows its technical measurement range (see MEASUREMENT_TYPES below).
-# These values were taken from the currently configured LabCom Cloud
-# targets (as of 2026) and are specific to one pool/setup; adjust freely
-# to match your own targets.
+IDEAL_RANGE_LOW = "te laag"
+IDEAL_RANGE_HIGH = "te hoog"
+IDEAL_RANGE_OK = "ok"
+
+# --- Streefwaarden (ideale range voor gezond zwemwater) ---
+# Deze horen NIET bij het officiele BLE-protocol - het apparaat kent alleen
+# zijn eigen technische meetbereik (zie MEASUREMENT_TYPES hieronder).
+# Onderstaande waarden zijn gangbare richtwaarden voor een prive-buitenbad
+# met chloor; pas ze aan op de eigen situatie (zoutbad, bromide, spa).
 IDEAL_RANGES: dict[int, tuple[float, float]] = {
-    1: (1.0, 3.0),      # Total Chlorine (ppm)
-    8: (0.5, 3.0),       # Free Chlorine (ppm)
-    9: (7.2, 7.4),        # pH
-    10: (80.0, 120.0),    # Total Alkalinity (ppm)
-    11: (20.0, 50.0),     # Cyanuric Acid (ppm)
+    1: (1.0, 3.0),        # Totaal chloor (ppm)
+    6: (2.0, 4.0),        # Broom (ppm)
+    8: (1.0, 3.0),        # Vrij chloor (ppm)
+    9: (7.0, 7.4),        # pH
+    10: (80.0, 120.0),    # Totale alkaliniteit (ppm)
+    11: (30.0, 50.0),     # Cyanuurzuur / stabilisator (ppm)
+    35: (200.0, 400.0),   # Totale hardheid (ppm)
 }
 
 # --- Measurement scenario types: type_id -> (name, unit, decimals) ---

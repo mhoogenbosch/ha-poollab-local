@@ -1,0 +1,23 @@
+{
+  "config": {
+    "flow_title": "PoolLab ({name})",
+    "step": {
+      "user": {
+        "title": "PoolLab-apparaat kiezen",
+        "description": "Kies de PoolLab 1.0 watertester om via Bluetooth mee te verbinden.",
+        "data": {
+          "address": "Apparaat"
+        }
+      },
+      "confirm": {
+        "title": "PoolLab instellen",
+        "description": "Wil je {name} instellen?"
+      }
+    },
+    "abort": {
+      "no_devices_found": "Geen PoolLab in de buurt gevonden. Zet het apparaat aan en zorg dat het binnen bereik is van een Bluetooth-adapter of ESPHome Bluetooth-proxy. Let op: de PoolLab schakelt zichzelf na ongeveer 5 minuten uit.",
+      "not_supported": "Dit Bluetooth-apparaat is geen ondersteunde PoolLab.",
+      "already_configured": "Dit apparaat is al geconfigureerd."
+    }
+  }
+}

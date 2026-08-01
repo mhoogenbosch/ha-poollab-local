@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import struct
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -169,15 +170,24 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         mac = raw[15:21]
         battery_level = struct.unpack_from("<H", raw, 21)[0]
 
+        # An uninitialised or corrupted device clock (the field is a uint64)
+        # would otherwise raise OverflowError/OSError out of fromtimestamp and
+        # abort the whole poll with an unhelpful traceback.
+        device_time: datetime | None = None
+        if device_time_raw:
+            try:
+                device_time = datetime.fromtimestamp(device_time_raw, tz=timezone.utc)
+            except (OverflowError, OSError, ValueError):
+                _LOGGER.debug(
+                    "PoolLab reported an implausible device clock (%s); ignoring",
+                    device_time_raw,
+                )
+
         return {
             "active_id": active_id,
             "fw_version": fw_version,
             "result_count": result_count,
-            "device_time": (
-                datetime.fromtimestamp(device_time_raw, tz=timezone.utc)
-                if device_time_raw
-                else None
-            ),
+            "device_time": device_time,
             "mac_address": ":".join(f"{b:02X}" for b in mac),
             "battery_level": battery_level,
         }
@@ -204,6 +214,17 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             (value,) = struct.unpack_from("<f", chunk, 8)
 
             if measure_type == 0 and timestamp == 0:
+                records.append(None)
+                continue
+
+            # A corrupted record can decode to NaN/inf, which would end up as a
+            # literal "nan" sensor state and poison long-term statistics.
+            if not math.isfinite(value):
+                _LOGGER.debug(
+                    "Skipping PoolLab record %s (type %s): non-finite value",
+                    measure_id,
+                    measure_type,
+                )
                 records.append(None)
                 continue
 
