@@ -28,6 +28,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    DEVICE_MEMORY_SLOTS,
     DOMAIN,
     IDEAL_RANGE_HIGH,
     IDEAL_RANGE_LOW,
@@ -36,7 +37,9 @@ from .const import (
     MANUFACTURER,
     MEASUREMENT_TYPES,
     MEASURE_STATUS_NAMES,
+    MEASUREMENT_RANGES,
     MODEL,
+    OEM_VARIANTS,
 )
 from .coordinator import PoolLabCoordinator
 
@@ -49,6 +52,33 @@ def _as_utc(timestamp: int | None) -> datetime | None:
         return datetime.fromtimestamp(timestamp, tz=timezone.utc)
     except (OverflowError, OSError, ValueError):
         return None
+
+
+def _device_info(coordinator: PoolLabCoordinator, address: str) -> DeviceInfo:
+    """Shared device registry entry for every PoolLab entity."""
+    info = (coordinator.data or {}).get("device_info", {})
+    model = OEM_VARIANTS.get(info.get("active_id"), MODEL)
+    return DeviceInfo(
+        identifiers={(DOMAIN, address)},
+        connections={("bluetooth", address)},
+        name="PoolLab",
+        manufacturer=MANUFACTURER,
+        model=model,
+        sw_version=str(info.get("fw_version", "")) or None,
+    )
+
+
+def _scanner_name(hass: HomeAssistant, source: Any) -> str | None:
+    """Human-readable name of the adapter/proxy behind a Bluetooth source id."""
+    if not source:
+        return None
+    try:
+        scanner = bluetooth.async_scanner_by_source(hass, source)
+    except Exception:  # noqa: BLE001 - helper availability varies per HA version
+        scanner = None
+    if scanner is not None:
+        return getattr(scanner, "name", None) or str(source)
+    return str(source)
 
 
 async def async_setup_entry(
@@ -65,6 +95,9 @@ async def async_setup_entry(
         PoolLabBatterySensor(coordinator, address),
         PoolLabLastMeasurementSensor(coordinator, address),
         PoolLabSignalSensor(coordinator, address),
+        PoolLabProxySensor(coordinator, address),
+        PoolLabStoredResultsSensor(coordinator, address),
+        PoolLabClockDriftSensor(coordinator, address),
     ]
 
     # Recreate a sensor for every measurement type ever seen on this device
@@ -129,15 +162,7 @@ class PoolLabBaseEntity(CoordinatorEntity[PoolLabCoordinator], RestoreEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        info = (self.coordinator.data or {}).get("device_info", {})
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._address)},
-            connections={("bluetooth", self._address)},
-            name="PoolLab",
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            sw_version=str(info.get("fw_version", "")) or None,
-        )
+        return _device_info(self.coordinator, self._address)
 
     @property
     def available(self) -> bool:
@@ -204,15 +229,7 @@ class PoolLabSignalSensor(SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        info = (self._coordinator.data or {}).get("device_info", {})
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._address)},
-            connections={("bluetooth", self._address)},
-            name="PoolLab",
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            sw_version=str(info.get("fw_version", "")) or None,
-        )
+        return _device_info(self._coordinator, self._address)
 
     @property
     def native_value(self) -> int | None:
@@ -234,16 +251,123 @@ class PoolLabSignalSensor(SensorEntity):
             return
 
         self._rssi = service_info.rssi
+        name = _scanner_name(self.hass, getattr(service_info, "source", None))
+        self._extra = {"ontvangen_via": name or "onbekend"}
+
+
+class PoolLabProxySensor(SensorEntity):
+    """Which Bluetooth adapter or proxy currently hears the device.
+
+    Useful in a multi-proxy setup: reads that time out often turn out to be
+    running over a weak or non-connectable route.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Via proxy"
+    _attr_icon = "mdi:access-point"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = True
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        self._coordinator = coordinator
+        self._address = address
+        self._attr_unique_id = f"{address}_proxy"
+        self._proxy: str | None = None
+        self._extra: dict[str, Any] = {}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return _device_info(self._coordinator, self._address)
+
+    @property
+    def native_value(self) -> str | None:
+        return self._proxy
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return self._extra
+
+    async def async_update(self) -> None:
+        service_info = bluetooth.async_last_service_info(
+            self.hass, self._address, connectable=True
+        )
+        if service_info is None:
+            # Keep the last known proxy rather than blanking it: knowing where
+            # the device was last heard stays useful while it is switched off.
+            self._extra = {"in_bereik": False}
+            return
+
         source = getattr(service_info, "source", None)
-        name = str(source) if source else "onbekend"
-        if source:
+        self._proxy = _scanner_name(self.hass, source)
+        self._extra = {
+            "in_bereik": True,
+            "signaalsterkte_dbm": service_info.rssi,
+            "adapter_id": str(source) if source else None,
+        }
+
+
+class PoolLabStoredResultsSensor(PoolLabBaseEntity, SensorEntity):
+    """Number of measurements stored on the device (max 16 cells x 16 = 256)."""
+
+    _attr_name = "Opgeslagen metingen"
+    _attr_icon = "mdi:database"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_result_count"
+        self._restored_value: int | None = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.state not in (None, "unknown", "unavailable"):
             try:
-                scanner = bluetooth.async_scanner_by_source(self.hass, source)
-            except Exception:  # noqa: BLE001 - helper availability varies per HA version
-                scanner = None
-            if scanner is not None:
-                name = getattr(scanner, "name", None) or name
-        self._extra = {"ontvangen_via": name}
+                self._restored_value = int(float(last_state.state))
+            except ValueError:
+                self._restored_value = None
+
+    @property
+    def native_value(self) -> int | None:
+        if self.coordinator.data:
+            value = self.coordinator.data.get("device_info", {}).get("result_count")
+            if value is not None:
+                return value
+        return self._restored_value
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        value = self.native_value
+        if value is None:
+            return {}
+        return {"maximum": DEVICE_MEMORY_SLOTS, "geheugen_vol": value >= DEVICE_MEMORY_SLOTS}
+
+
+class PoolLabClockDriftSensor(PoolLabBaseEntity, SensorEntity):
+    """Difference between the device clock and Home Assistant, in seconds.
+
+    The device timestamps every measurement itself, so drift here lands
+    straight in `measured_at`. Press "Klok gelijkzetten" to correct it.
+    """
+
+    _attr_name = "Klokafwijking"
+    _attr_icon = "mdi:clock-alert-outline"
+    _attr_native_unit_of_measurement = "s"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_clock_drift"
+
+    @property
+    def native_value(self) -> int | None:
+        info = (self.coordinator.data or {}).get("device_info", {})
+        device_time = info.get("device_time")
+        read_at = info.get("read_at")
+        if device_time is None or read_at is None:
+            return None
+        return round((device_time - read_at).total_seconds())
 
 
 class PoolLabLastMeasurementSensor(PoolLabBaseEntity, SensorEntity):
@@ -373,6 +497,10 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
         measured_at = _as_utc(record.get("timestamp"))
         if measured_at is not None:
             attrs["measured_at"] = measured_at.isoformat()
+
+        device_range = MEASUREMENT_RANGES.get(self.type_id)
+        if device_range is not None:
+            attrs["meetbereik_min"], attrs["meetbereik_max"] = device_range
 
         ideal_range = IDEAL_RANGES.get(self.type_id)
         if ideal_range is not None:

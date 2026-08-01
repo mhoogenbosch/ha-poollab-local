@@ -5,6 +5,34 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [0.9.0-mh.1] - 2026-08-01
+
+De officiële API-documentatie ([BLE.pdf](https://poollab.org/static/api/BLE.pdf), v2)
+is deze keer volledig uitgelezen in plaats van geleund op een transcriptie. Daaruit
+kwamen een paar gegevens die het apparaat al meestuurde maar die nergens zichtbaar
+waren.
+
+### Added
+- **`sensor.poollab_via_proxy`**: welke Bluetooth-adapter of -proxy het apparaat hoort.
+  In een opstelling met meerdere proxy's wisselt dat, en een uitlezing die telkens over
+  een zwakke route loopt verklaart timeouts. Attributen: `in_bereik`,
+  `signaalsterkte_dbm` en `adapter_id`. De naam blijft staan als het apparaat uit gaat.
+- **`sensor.poollab_opgeslagen_metingen`**: `result_count` uit `GET_INFO`, met attributen
+  `maximum` (256 = 16 flashcellen × 16) en `geheugen_vol`.
+- **`sensor.poollab_klokafwijking`**: verschil tussen de apparaatklok en Home Assistant
+  in seconden. Het apparaat stempelt zijn metingen zelf, dus dit vertelt wanneer
+  "Klok gelijkzetten" nodig is.
+- **Attributen `meetbereik_min` / `meetbereik_max`** per meetsensor, uit de officiële
+  tabel "Measurement Result Types" (pp. 21–22). Dit maakt inzichtelijk waarom een meting
+  buiten bereik valt: pH meet het apparaat alleen tussen 6,50 en 8,40.
+- **OEM-variant herkend** via `active_id` uit `GET_INFO` (0=INTERNAL, 1=PoolLab 1.0,
+  2=9-in-1 Multitest, 3=ISOLab 1.0, 4=Aquaviva, 5=FinWell Pro). Wordt als model in het
+  apparaatregister gezet; alle varianten delen dezelfde BLE-API.
+
+### Changed
+- `device_info` en het opzoeken van de proxynaam zijn uitgefactoreerd naar gedeelde
+  helpers; die logica stond in drie klassen gekopieerd.
+
 ## [0.8.0-mh.1] - 2026-08-01
 
 ### Changed
@@ -123,6 +151,7 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[0.9.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.9.0-mh.1
 [0.8.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.8.0-mh.1
 [0.7.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.7.0-mh.1
 [0.6.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.6.0-mh.1

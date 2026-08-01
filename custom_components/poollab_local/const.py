@@ -32,6 +32,8 @@ CMD_SET_CONTRAST_MINUS = 0x09
 CMD_GET_PPM_MGL = 0x0A
 CMD_SET_PPM_MGL = 0x0B
 
+DEVICE_MEMORY_SLOTS = 16 * 16  # 16 flash cells x 16 measurements
+
 RESULT_OK = 0x01
 RESULT_ERR = 0x02
 
@@ -128,4 +130,73 @@ MEASUREMENT_TYPES: dict[int, tuple[str, str, int]] = {
     47: ("Free Chlorine (liquid)", "ppm", 2),
     48: ("pH (liquid)", "pH", 2),
     49: ("Ozone i.p.o. Chlorine (liquid)", "ppm", 2),
+}
+
+# --- Technisch meetbereik van het apparaat (type_id -> (min, max)) ---
+# Overgenomen uit de officiele API-documentatie, tabel "Measurement Result
+# Types" (pp. 21-22). Dit is wat het apparaat kan meten; ligt een meting
+# hierbuiten dan rapporteert het zelf underrange of overrange. Niet te
+# verwarren met IDEAL_RANGES, dat zijn de streefwaarden voor het water.
+MEASUREMENT_RANGES: dict[int, tuple[float, float]] = {
+    1: (0.00, 0.60),
+    2: (0.00, 4.00),
+    3: (0.00, 11.40),
+    5: (0.00, 30.00),
+    6: (0.00, 13.50),
+    7: (0.00, 2.90),
+    8: (0.00, 6.00),
+    9: (6.50, 8.40),
+    10: (0.00, 300.00),
+    11: (0.00, 160.00),
+    12: (0.00, 200.00),
+    13: (0.00, 500.00),
+    14: (0.00, 200.00),
+    15: (0.00, 1.65),
+    16: (0.00, 50.00),
+    17: (0.00, 1.50),
+    18: (0.00, 1.00),
+    19: (0.00, 10.00),
+    20: (0.00, 1.30),
+    21: (0.00, 6.00),
+    22: (0.00, 5.00),
+    23: (0.00, 500.00),
+    24: (0.00, 4.00),
+    25: (0.00, 100.00),
+    26: (0.80, 12.00),
+    27: (8.00, 9.30),
+    28: (5.20, 6.80),
+    29: (8.00, 9.30),
+    30: (8.00, 9.30),
+    31: (5.20, 6.80),
+    32: (5.20, 6.80),
+    33: (6.50, 8.40),
+    34: (6.50, 8.40),
+    35: (0.00, 200.00),
+    36: (6.50, 8.40),
+    37: (0.00, 21.47),
+    38: (0.00, 2.51),
+    39: (5.00, 60.00),
+    40: (0.00, 200.00),
+    41: (0.03, 8.00),
+    42: (0.00, 4.07),
+    43: (0.00, 11.42),
+    44: (0.00, 30.00),
+    45: (0.00, 13.55),
+    46: (0.00, 2.90),
+    47: (0.03, 8.00),
+    48: (6.50, 8.40),
+    49: (0.00, 4.07),
+}
+
+# --- OEM-varianten (active_id uit GET_INFO) ---
+# Alle varianten delen dezelfde BLE-API; ze verschillen in welke tests
+# beschikbaar zijn. Bron: API-documentatie, "OEM Variants" (p. 23).
+OEM_VARIANTS: dict[int, str] = {
+    0: "INTERNAL",
+    1: "PoolLab 1.0",
+    2: "9-in-1 Multitest",
+    3: "ISOLab 1.0",
+    4: "Aquaviva",
+    5: "FinWell Pro",
+    6: "INTERNAL",
 }

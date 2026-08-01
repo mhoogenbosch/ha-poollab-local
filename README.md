@@ -107,7 +107,10 @@ aantal seconden.
 | `sensor.poollab_<parameter>` | sensor | Eén per gemeten parameter (pH, vrij chloor, …) |
 | `sensor.poollab_laatste_meting` | sensor | Tijdstip van de meest recente meting |
 | `binary_sensor.poollab_bereikbaar` | diagnostisch | Ziet Home Assistant het apparaat nú? |
+| `sensor.poollab_via_proxy` | diagnostisch | Welke adapter of Bluetooth-proxy het apparaat hoort |
 | `sensor.poollab_signaalsterkte` | diagnostisch | RSSI van de laatste advertentie, in dBm |
+| `sensor.poollab_opgeslagen_metingen` | diagnostisch | Aantal metingen in het apparaatgeheugen (max 256) |
+| `sensor.poollab_klokafwijking` | diagnostisch | Verschil tussen apparaatklok en Home Assistant, in seconden |
 | `sensor.poollab_batterij` | diagnostisch | Batterijniveau in procenten |
 
 Meetsensoren worden pas aangemaakt zodra die parameter een keer gemeten is, en blijven
@@ -126,9 +129,16 @@ Assistant het apparaat hoort adverteren — handig om te bepalen of het zin heef
 | `signaalsterkte_dbm` | RSSI van de laatste advertentie |
 | `laatste_uitlezing_gelukt` | Of de meest recente uitlezing slaagde |
 
-`sensor.poollab_signaalsterkte` geeft diezelfde RSSI als losse waarde, zodat je kunt
-zien of een proxy dichter bij het bad nodig is. Staat het apparaat uit, dan wordt die
-sensor leeg in plaats van dat er een verouderde waarde blijft staan.
+`sensor.poollab_signaalsterkte` geeft diezelfde RSSI als losse waarde, en
+`sensor.poollab_via_proxy` laat zien wélke adapter of proxy het apparaat hoort. In een
+opstelling met meerdere proxy's wisselt dat: blijkt een uitlezing telkens over een
+zwakke route te lopen, dan is een proxy dichter bij het bad de oplossing. De
+signaalsterkte wordt leeggemaakt zodra het apparaat uit bereik is; de proxynaam blijft
+staan, want weten wáár hij het laatst gezien is blijft nuttig.
+
+`sensor.poollab_klokafwijking` toont hoeveel de apparaatklok afwijkt van Home
+Assistant. Loopt dat op, druk dan op **Klok gelijkzetten** — het apparaat stempelt zijn
+metingen namelijk zelf.
 
 ### Attributen per meetsensor
 
@@ -139,9 +149,13 @@ sensor leeg in plaats van dat er een verouderde waarde blijft staan.
 | `measure_id` | Volgnummer van de meting op het apparaat |
 | `ideal_low` / `ideal_high` | Je streefwaarden voor deze parameter |
 | `ideal_range_status` | `te laag`, `ok` of `te hoog` |
-
 | `genegeerde_meting` | Er was een recentere meting die niet als waarde is gebruikt |
 | `genegeerde_meting_op` | Wanneer die genegeerde meting is gedaan |
+| `meetbereik_min` / `meetbereik_max` | Wat het apparaat voor deze parameter kán meten |
+
+Het meetbereik komt uit de officiële documentatie en verklaart waarom een meting
+buiten bereik valt: pH meet het apparaat bijvoorbeeld alleen tussen **6,50 en 8,40**,
+dus een mislukte pH-test belandt onvermijdelijk onder het bereik.
 
 ### Mislukte metingen
 

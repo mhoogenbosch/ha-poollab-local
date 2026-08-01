@@ -241,6 +241,8 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
 
         return {
+            # When we read the clock, so the drift can be derived later.
+            "read_at": datetime.now(tz=timezone.utc),
             "active_id": active_id,
             "fw_version": fw_version,
             "result_count": result_count,
