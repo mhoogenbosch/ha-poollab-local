@@ -5,6 +5,33 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [0.6.0-mh.1] - 2026-08-01
+
+Eerste versie die op echte hardware is bevestigd (PoolLab 1.0, MAC-prefix `60:44:7A:`).
+Een volledige uitlezing duurt 1,4–2,8 seconden via een ESPHome Bluetooth-proxy.
+
+### Added
+- **Knop "Klok gelijkzetten"** (`PCMD_API_SET_TIME`, commando `0x02`). Het apparaat
+  stempelt elke meting met zijn eigen klok, dus drift daar komt rechtstreeks terug in
+  het `measured_at`-attribuut. Na het zetten volgt automatisch een verse uitlezing.
+- Logo en banner (`images/`, zelfstandige SVG's zonder externe afhankelijkheden).
+- README uitgebreid tot een volledige handleiding: vergelijking met de
+  cloud-integraties, vereisten voor de Bluetooth-proxy, entiteiten- en
+  attributentabellen, automation-voorbeelden, een tabel voor probleemoplossing en een
+  beschrijving van het protocol.
+
+### Changed
+- De verbindingsopzet is uitgefactoreerd naar `_connect()`, zodat uitlezen en
+  klokinstellen dezelfde route delen.
+
+### Verified on hardware
+- `GET_INFO` levert een correct batterijniveau.
+- `GET_MEASURES` ontleedt een echt meetrecord volledig juist: parametertype 9 herkend
+  als pH, plus volgnummer, tijdstempel en statuscode. Een meting zonder reagenstablet
+  komt terug als `measure_status` 1 → attribuut `status: "onder meetbereik"`, wat
+  bevestigt dat ook het statusveld op de juiste offset gelezen wordt.
+- De pH-fix uit 0.5.0-mh.1 is bevestigd: geen "not a valid unit"-waarschuwing meer.
+
 ## [0.5.0-mh.1] - 2026-08-01
 
 Eerste release van de fork, afgesplitst van upstream
@@ -47,4 +74,5 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[0.6.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.6.0-mh.1
 [0.5.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.5.0-mh.1

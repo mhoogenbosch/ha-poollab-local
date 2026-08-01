@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-label="PoolLab Local — lokale Bluetooth-integratie voor Home Assistant">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#082F49"/>
+      <stop offset="55%" stop-color="#0C4A6E"/>
+      <stop offset="100%" stop-color="#0E7490"/>
+    </linearGradient>
+    <linearGradient id="d2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0FDFF"/>
+      <stop offset="55%" stop-color="#A5F3FC"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <filter id="s2" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#00131F" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="320" rx="24" fill="url(#bg)"/>
+
+  <!-- water waves along the bottom -->
+  <g stroke="#67E8F9" stroke-opacity="0.20" stroke-width="8" fill="none" stroke-linecap="round">
+    <path d="M0 250c50-26 100-26 150 0s100 26 150 0 100-26 150 0 100 26 150 0 100-26 150 0 100 26 150 0 100-26 150 0"/>
+    <path d="M0 292c50-26 100-26 150 0s100 26 150 0 100-26 150 0 100 26 150 0 100-26 150 0 100 26 150 0 100-26 150 0"/>
+  </g>
+
+  <!-- droplet mark -->
+  <g transform="translate(96,58) scale(0.42)">
+    <path filter="url(#s2)" fill="url(#d2)"
+          d="M256 92c0 0 104 118 104 186a104 104 0 0 1-208 0C152 210 256 92 256 92z"/>
+    <text x="256" y="316" text-anchor="middle" font-family="'DejaVu Sans',Verdana,sans-serif"
+          font-size="92" font-weight="700" fill="#0C4A6E">pH</text>
+  </g>
+
+  <!-- wordmark -->
+  <text x="270" y="140" font-family="'DejaVu Sans',Verdana,sans-serif" font-size="66" font-weight="700" fill="#F0F9FF">
+    PoolLab Local
+  </text>
+  <text x="272" y="188" font-family="'DejaVu Sans',Verdana,sans-serif" font-size="26" fill="#A5F3FC">
+    Lokale Bluetooth-integratie voor Home Assistant
+  </text>
+
+  <!-- feature chips -->
+  <g font-family="'DejaVu Sans',Verdana,sans-serif" font-size="20" fill="#E0F2FE">
+    <g transform="translate(272,214)">
+      <rect width="196" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.10" stroke="#38BDF8" stroke-opacity="0.5"/>
+      <text x="98" y="28" text-anchor="middle">Officiële BLE-API</text>
+    </g>
+    <g transform="translate(486,214)">
+      <rect width="180" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.10" stroke="#38BDF8" stroke-opacity="0.5"/>
+      <text x="90" y="28" text-anchor="middle">Geen cloud</text>
+    </g>
+    <g transform="translate(684,214)">
+      <rect width="238" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.10" stroke="#38BDF8" stroke-opacity="0.5"/>
+      <text x="119" y="28" text-anchor="middle">Werkt via BLE-proxy</text>
+    </g>
+  </g>
+
+  <!-- bluetooth badge, right -->
+  <g transform="translate(1074,150)">
+    <circle cx="0" cy="0" r="74" fill="#001A2B" fill-opacity="0.55"/>
+    <circle cx="0" cy="0" r="74" fill="none" stroke="#38BDF8" stroke-opacity="0.65" stroke-width="5"/>
+    <path d="M-18 -34 L18 -9 L-18 16 M-18 34 L18 9 L-18 -16 M0 -39 L0 39"
+          fill="none" stroke="#7DD3FC" stroke-width="10"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

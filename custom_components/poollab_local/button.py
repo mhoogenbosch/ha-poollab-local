@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity, ButtonDeviceClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ADDRESS
+from homeassistant.const import CONF_ADDRESS, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -21,7 +21,12 @@ async def async_setup_entry(
     """Set up the PoolLab refresh button."""
     coordinator: PoolLabCoordinator = hass.data[DOMAIN][entry.entry_id]
     address = entry.data[CONF_ADDRESS]
-    async_add_entities([PoolLabRefreshButton(coordinator, address)])
+    async_add_entities(
+        [
+            PoolLabRefreshButton(coordinator, address),
+            PoolLabSetTimeButton(coordinator, address),
+        ]
+    )
 
 
 class PoolLabRefreshButton(CoordinatorEntity[PoolLabCoordinator], ButtonEntity):
@@ -66,3 +71,23 @@ class PoolLabRefreshButton(CoordinatorEntity[PoolLabCoordinator], ButtonEntity):
     async def async_press(self) -> None:
         """Trigger an immediate BLE poll of the device."""
         await self.coordinator.async_request_refresh()
+
+
+class PoolLabSetTimeButton(PoolLabRefreshButton):
+    """Sets the device clock to Home Assistant's current time.
+
+    The PoolLab stamps every measurement with its own clock, so drift there
+    lands straight in the `measured_at` attribute of each sensor.
+    """
+
+    _attr_name = "Klok gelijkzetten"
+    _attr_device_class = None
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_set_time_button"
+
+    async def async_press(self) -> None:
+        """Send PCMD_API_SET_TIME with the current time."""
+        await self.coordinator.async_set_device_time()

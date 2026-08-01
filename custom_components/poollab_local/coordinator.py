@@ -15,6 +15,7 @@ import asyncio
 import logging
 import math
 import struct
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -32,6 +33,7 @@ from .const import (
     CHAR_MOSI_CMD_UUID,
     CMD_GET_INFO,
     CMD_GET_MEASURES,
+    CMD_SET_TIME,
     DEFAULT_TIMEOUT,
     MEASUREMENT_TYPES,
     PREAMBLE,
@@ -66,7 +68,8 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._lock:
             return await self._poll_device()
 
-    async def _poll_device(self) -> dict[str, Any]:
+    async def _connect(self):
+        """Connect and subscribe to MISO_Signal; returns (client, response_ready)."""
         ble_device: BLEDevice | None = bluetooth.async_ble_device_from_address(
             self.hass, self.address, connectable=True
         )
@@ -76,22 +79,58 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "adapter/proxy. Make sure it is powered on and in range."
             )
 
+        client = await establish_connection(
+            BleakClientWithServiceCache,
+            ble_device,
+            self.address,
+            max_attempts=3,
+        )
+
+        response_ready = asyncio.Event()
+
+        def _on_signal_notify(_sender: Any, _data: bytearray) -> None:
+            # Payload is irrelevant; this is purely a "data is ready" ping.
+            response_ready.set()
+
+        await client.start_notify(CHAR_MISO_SIGNAL_UUID, _on_signal_notify)
+        return client, response_ready
+
+    async def async_set_device_time(self) -> None:
+        """Set the device clock to the current time (PCMD_API_SET_TIME).
+
+        The device stamps each measurement with its own clock, so drift there
+        shows up directly in the `measured_at` attribute.
+        """
+        async with self._lock:
+            client: BleakClientWithServiceCache | None = None
+            try:
+                client, response_ready = await self._connect()
+                now = int(time.time())
+                await self._send_command(
+                    client, response_ready, CMD_SET_TIME, struct.pack("<I", now)
+                )
+                _LOGGER.info(
+                    "PoolLab clock set to %s",
+                    datetime.fromtimestamp(now, tz=timezone.utc).isoformat(),
+                )
+            except TimeoutError as err:
+                raise UpdateFailed(f"Timed out setting PoolLab clock: {err}") from err
+            except BleakError as err:
+                raise UpdateFailed(f"Bluetooth error setting PoolLab clock: {err}") from err
+            finally:
+                if client is not None:
+                    try:
+                        await client.disconnect()
+                    except BleakError:
+                        pass
+
+        # Pull fresh data so the reported device_time reflects the new clock.
+        await self.async_request_refresh()
+
+    async def _poll_device(self) -> dict[str, Any]:
         client: BleakClientWithServiceCache | None = None
         try:
-            client = await establish_connection(
-                BleakClientWithServiceCache,
-                ble_device,
-                self.address,
-                max_attempts=3,
-            )
-
-            response_ready = asyncio.Event()
-
-            def _on_signal_notify(_sender: Any, _data: bytearray) -> None:
-                # Payload is irrelevant; this is purely a "data is ready" ping.
-                response_ready.set()
-
-            await client.start_notify(CHAR_MISO_SIGNAL_UUID, _on_signal_notify)
+            client, response_ready = await self._connect()
 
             info_raw = await self._send_command(
                 client, response_ready, CMD_GET_INFO, b""
