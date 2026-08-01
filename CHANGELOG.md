@@ -5,6 +5,28 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [0.8.0-mh.1] - 2026-08-01
+
+### Changed
+- **Mislukte metingen overschrijven de sensorwaarde niet meer.** Meet je zonder
+  reagenstablet, dan rapporteert de fotometer `underrange` met waarde `0.0`. Die
+  liet de sensor eerder van bijvoorbeeld pH 7,2 naar 0,0 springen, wat ook de
+  langetermijnstatistiek vervuilt. Zulke metingen worden nu overgeslagen bij het
+  bepalen van de waarde; de laatste geldige meting blijft staan. **Overrange
+  blijft wél gewoon de waarde**, want "hoger dan ik kan meten" is echte,
+  actiegevende informatie — bijvoorbeeld bij chloor.
+- Is er een genegeerde meting die recenter is dan de getoonde waarde, dan melden
+  de attributen `genegeerde_meting` en `genegeerde_meting_op` dat, zodat een
+  mislukte meting niet stilletjes verdwijnt.
+- Wordt een parameter uitsluitend als underrange gemeten, dan krijgt hij alsnog
+  een sensor (zonder waarde), zodat zichtbaar is dát er gemeten is.
+
+### Added
+- Iconen voor alle entiteiten: pH krijgt `mdi:ph`, overige parameters
+  `mdi:test-tube`, en de bereikbaarheidssensor wisselt tussen
+  `mdi:bluetooth-connect` en `mdi:bluetooth-off`.
+- Parsertest voor het behoud van de underrange-status.
+
 ## [0.7.0-mh.1] - 2026-08-01
 
 Diagnostiek, zodat je niet meer in het logbestand hoeft te duiken om te weten of het
@@ -93,6 +115,7 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[0.8.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.8.0-mh.1
 [0.7.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.7.0-mh.1
 [0.6.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.6.0-mh.1
 [0.5.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.5.0-mh.1

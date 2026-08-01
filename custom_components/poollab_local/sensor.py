@@ -4,12 +4,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from homeassistant.components import bluetooth
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_ADDRESS,
@@ -92,9 +92,15 @@ async def async_setup_entry(
     def _add_new_measurement_sensors() -> None:
         if not coordinator.data:
             return
+        # Include types seen only as underrange: those readings are not used as
+        # a value, but the user should still see that the parameter was measured.
+        seen_types = {
+            *coordinator.data.get("measurements", {}),
+            *coordinator.data.get("skipped", {}),
+        }
         new_entities = [
             PoolLabMeasurementSensor(coordinator, address, type_id)
-            for type_id in coordinator.data.get("measurements", {})
+            for type_id in seen_types
             if type_id not in known_types
         ]
         for entity in new_entities:
@@ -182,6 +188,7 @@ class PoolLabSignalSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Signaalsterkte"
+    _attr_icon = "mdi:signal-variant"
     _attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
     _attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -248,6 +255,7 @@ class PoolLabLastMeasurementSensor(PoolLabBaseEntity, SensorEntity):
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_name = "Laatste meting"
+    _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
         super().__init__(coordinator, address)
@@ -292,6 +300,7 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
         )
         self._attr_name = name
         self._attr_unique_id = f"{address}_measure_{type_id}"
+        self._attr_icon = "mdi:ph" if unit == "pH" else "mdi:test-tube"
         if unit == "pH":
             # SensorDeviceClass.PH only accepts `None` as its unit
             # (DEVICE_CLASS_UNITS[PH] == {None}); passing "pH" makes HA log an
@@ -332,6 +341,13 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
         return self.coordinator.data.get("measurements", {}).get(self.type_id)
 
     @property
+    def _skipped_record(self) -> dict[str, Any] | None:
+        """Most recent underrange reading, which is not used as the value."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get("skipped", {}).get(self.type_id)
+
+    @property
     def native_value(self) -> float | None:
         record = self._record
         if record:
@@ -342,7 +358,9 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         record = self._record
         if not record:
-            return self._restored_attrs
+            attrs = dict(self._restored_attrs)
+            attrs.update(self._skipped_attrs())
+            return attrs
 
         attrs: dict[str, Any] = {
             "status": MEASURE_STATUS_NAMES.get(record["status"], "onbekend"),
@@ -369,4 +387,16 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             else:
                 attrs["ideal_range_status"] = IDEAL_RANGE_OK
 
+        attrs.update(self._skipped_attrs(newer_than=record["timestamp"]))
         return attrs
+
+    def _skipped_attrs(self, newer_than: int = 0) -> dict[str, Any]:
+        """Flag an underrange reading that was deliberately not used as value."""
+        skipped = self._skipped_record
+        if not skipped or skipped["timestamp"] <= newer_than:
+            return {}
+        when = _as_utc(skipped.get("timestamp"))
+        return {
+            "genegeerde_meting": "onder meetbereik",
+            "genegeerde_meting_op": when.isoformat() if when else None,
+        }

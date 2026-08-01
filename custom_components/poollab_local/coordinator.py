@@ -35,6 +35,7 @@ from .const import (
     CMD_GET_MEASURES,
     CMD_SET_TIME,
     DEFAULT_TIMEOUT,
+    MEASURE_STATUS_UNDERRANGE,
     MEASUREMENT_TYPES,
     PREAMBLE,
     UPDATE_INTERVAL_SECONDS,
@@ -139,6 +140,7 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             result_count = info["result_count"]
             measurements: dict[int, dict[str, Any]] = {}
+            skipped: dict[int, dict[str, Any]] = {}
 
             cell_id = 0
             results_read = 0
@@ -154,12 +156,28 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if record is None:
                             continue
                         results_read += 1
-                        existing = measurements.get(record["type_id"])
+
+                        # An underrange reading means the photometer saw no
+                        # colouring at all - typically a measurement taken
+                        # without a reagent tablet. Letting that 0.0 overwrite a
+                        # good value would poison both the state and long-term
+                        # statistics. Overrange is kept: "higher than I can
+                        # measure" is real, actionable information.
+                        target = (
+                            skipped
+                            if record["status"] == MEASURE_STATUS_UNDERRANGE
+                            else measurements
+                        )
+                        existing = target.get(record["type_id"])
                         if existing is None or record["timestamp"] > existing["timestamp"]:
-                            measurements[record["type_id"]] = record
+                            target[record["type_id"]] = record
                 cell_id += 1
 
-            return {"device_info": info, "measurements": measurements}
+            return {
+                "device_info": info,
+                "measurements": measurements,
+                "skipped": skipped,
+            }
 
         except TimeoutError as err:
             raise UpdateFailed(f"Timed out talking to PoolLab: {err}") from err

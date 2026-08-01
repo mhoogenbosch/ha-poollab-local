@@ -140,10 +140,20 @@ sensor leeg in plaats van dat er een verouderde waarde blijft staan.
 | `ideal_low` / `ideal_high` | Je streefwaarden voor deze parameter |
 | `ideal_range_status` | `te laag`, `ok` of `te hoog` |
 
-> [!IMPORTANT]
-> Meet je zonder reagenstablet, dan rapporteert het apparaat zelf `onder meetbereik`
-> met waarde `0.0`. Dat is geen fout van de integratie — het staat zo in het
-> meetrecord. Kijk dus naar het `status`-attribuut voordat je een waarde vertrouwt.
+| `genegeerde_meting` | Er was een recentere meting die niet als waarde is gebruikt |
+| `genegeerde_meting_op` | Wanneer die genegeerde meting is gedaan |
+
+### Mislukte metingen
+
+Meet je zonder reagenstablet, dan ziet de fotometer geen kleuring en rapporteert hij
+`onder meetbereik` met waarde `0.0`. Zo'n meting **overschrijft de sensorwaarde niet**:
+de laatste geldige meting blijft staan, en de attributen `genegeerde_meting` en
+`genegeerde_meting_op` laten zien dat er iets is overgeslagen. Anders zou één
+mislukte meting je pH van 7,2 naar 0,0 laten springen en ook de langetermijn-
+statistiek vervuilen.
+
+`boven meetbereik` wordt **wél** als waarde overgenomen — dat is echte informatie
+("hoger dan ik kan meten"), bijvoorbeeld bij een te hoge chloorwaarde.
 
 ### Streefwaarden aanpassen
 

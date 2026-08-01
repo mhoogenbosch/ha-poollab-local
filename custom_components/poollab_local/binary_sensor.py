@@ -71,6 +71,10 @@ class PoolLabReachableSensor(BinarySensorEntity):
         return self._present
 
     @property
+    def icon(self) -> str:
+        return "mdi:bluetooth-connect" if self._present else "mdi:bluetooth-off"
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return self._extra
 

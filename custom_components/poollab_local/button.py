@@ -40,6 +40,7 @@ class PoolLabRefreshButton(CoordinatorEntity[PoolLabCoordinator], ButtonEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Nu ophalen"
+    _attr_icon = "mdi:bluetooth-transfer"
     _attr_device_class = ButtonDeviceClass.UPDATE
     _attr_entity_registry_enabled_default = True
 
@@ -81,6 +82,7 @@ class PoolLabSetTimeButton(PoolLabRefreshButton):
     """
 
     _attr_name = "Klok gelijkzetten"
+    _attr_icon = "mdi:clock-check-outline"
     _attr_device_class = None
     _attr_entity_category = EntityCategory.CONFIG
 

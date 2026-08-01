@@ -127,6 +127,10 @@ frame = (bytes([0xAB]) + body).ljust(250, b"\x00")
 
 records = [r for r in Coordinator._parse_measurements(frame) if r]
 check("aantal geldige records (NaN geweerd)", len(records), 3)
+check("underrange-status blijft behouden",
+      [r["status"] for r in Coordinator._parse_measurements(
+          (bytes([0xAB]) + record(9, 9, 1, stamp, 0.0)).ljust(250, b"\x00")) if r],
+      [1])
 check("pH-waarde", records[0]["value"], 7.31)
 check("pH-type", records[0]["name"], "pH")
 check("vrij chloor", records[1]["value"], 1.42)
