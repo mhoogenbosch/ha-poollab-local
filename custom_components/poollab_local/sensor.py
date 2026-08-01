@@ -513,6 +513,13 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             "measure_id": record["measure_id"],
         }
 
+        if record.get("clamped"):
+            # The device reports 0.0 on overrange; the shown value is the top of
+            # the measuring range, so the real value is at least that.
+            attrs["waarde_is_ondergrens"] = True
+
+
+
         # When the measurement was actually taken on the device. Without this
         # there is no way to tell a reading from an hour ago from one taken
         # three weeks ago, since the device is only read on demand.
@@ -547,6 +554,8 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             return {}
         when = _as_utc(skipped.get("timestamp"))
         return {
-            "genegeerde_meting": "onder meetbereik",
+            "genegeerde_meting": MEASURE_STATUS_NAMES.get(
+                skipped["status"], "onbruikbaar"
+            ),
             "genegeerde_meting_op": when.isoformat() if when else None,
         }

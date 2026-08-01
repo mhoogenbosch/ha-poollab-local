@@ -138,5 +138,20 @@ check("timestamp record 1", records[0]["timestamp"], stamp)
 check("status overrange", records[2]["status"], 2)
 check("lege helft -> 0 records", len([r for r in Coordinator._parse_measurements(bytes([0xAB]) + b"\x00" * 128) if r]), 0)
 
+# Overrange: het apparaat stuurt 0.0 omdat de meting niet op de schaal paste.
+# Die waarde overnemen is aantoonbaar fout - een alkaliniteit boven 200 zou als
+# 0.0 verschijnen en "te laag" heten. Hij moet naar de bovengrens geklemd worden.
+print("\nOverrange (alkaliniteit, meetbereik 0-200):")
+over = [r for r in Coordinator._parse_measurements(
+    (bytes([0xAB]) + record(20, 10, 2, stamp, 0.0)).ljust(250, b"\x00")) if r][0]
+check("waarde geklemd op bovengrens", over["value"], 200.0)
+check("gemarkeerd als ondergrens", over["clamped"], True)
+check("status blijft overrange", over["status"], 2)
+
+ok_rec = [r for r in Coordinator._parse_measurements(
+    (bytes([0xAB]) + record(21, 10, 0, stamp, 95.0)).ljust(250, b"\x00")) if r][0]
+check("normale meting niet geklemd", ok_rec["clamped"], False)
+check("normale waarde ongewijzigd", ok_rec["value"], 95.0)
+
 print("\n" + ("❌ MISLUKT: " + ", ".join(failures) if failures else "✅ Alle parsercontroles geslaagd"))
 sys.exit(1 if failures else 0)

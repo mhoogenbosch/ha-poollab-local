@@ -42,7 +42,9 @@ from .const import (
     CMD_SET_TIME,
     CMD_SLEEP_DEVICE,
     DEFAULT_TIMEOUT,
+    MEASURE_STATUS_OVERRANGE,
     MEASURE_STATUS_UNDERRANGE,
+    MEASUREMENT_RANGES,
     MEASUREMENT_TYPES,
     PREAMBLE,
     RESULT_ERR,
@@ -311,11 +313,11 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         # good value would poison both the state and long-term
                         # statistics. Overrange is kept: "higher than I can
                         # measure" is real, actionable information.
-                        target = (
-                            skipped
-                            if record["status"] == MEASURE_STATUS_UNDERRANGE
-                            else measurements
+                        unusable = record["status"] == MEASURE_STATUS_UNDERRANGE or (
+                            record["status"] == MEASURE_STATUS_OVERRANGE
+                            and not record["clamped"]
                         )
+                        target = skipped if unusable else measurements
                         existing = target.get(record["type_id"])
                         if existing is None or record["timestamp"] > existing["timestamp"]:
                             target[record["type_id"]] = record
@@ -441,6 +443,18 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 measure_type, (f"Unknown scenario {measure_type}", "ppm", 2)
             )
 
+            # On overrange the device reports value 0.0 - the reading simply did
+            # not fit its scale. Taking that at face value is actively wrong: a
+            # total alkalinity above 200 ppm would show as 0.0 and be judged
+            # "too low", the exact opposite of reality. Clamp to the top of the
+            # measuring range instead, so the value reads as "at least this".
+            clamped = False
+            if measure_status == MEASURE_STATUS_OVERRANGE:
+                device_range = MEASUREMENT_RANGES.get(measure_type)
+                if device_range is not None:
+                    value = device_range[1]
+                    clamped = True
+
             records.append(
                 {
                     "measure_id": measure_id,
@@ -450,6 +464,10 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "status": measure_status,
                     "timestamp": timestamp,
                     "value": round(value, decimals),
+                    # True when the value is the top of the measuring range
+                    # rather than a real reading: the actual value is at least
+                    # this much.
+                    "clamped": clamped,
                 }
             )
 

@@ -5,6 +5,28 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [1.1.0-mh.1] - 2026-08-01
+
+### Fixed
+- **Een overrange-meting werd als `0.0` overgenomen en dus als "te laag" beoordeeld
+  — het tegenovergestelde van de werkelijkheid.** Op hardware bleek dat het apparaat
+  bij overrange gewoon waarde `0.0` meldt: de meting paste simpelweg niet op de
+  schaal. De aanname in 1.0.0 dat overrange een bruikbare waarde oplevert was dus
+  fout. Een totale alkaliniteit boven 200 ppm verscheen daardoor als `0.0` met het
+  oordeel `te laag`, terwijl hij juist te hoog was — een automation die daarop stuurt
+  zou precies de verkeerde kant op corrigeren.
+
+  De waarde wordt nu **geklemd op de bovengrens van het meetbereik**, zodat hij leest
+  als "minstens dit". Het nieuwe attribuut **`waarde_is_ondergrens`** markeert dat.
+  Is voor dat parametertype geen meetbereik bekend, dan kan er niet geklemd worden en
+  gaat de meting naar de genegeerde metingen in plaats van als `0.0` te verschijnen.
+- Het attribuut `genegeerde_meting` noemt nu de werkelijke reden (`onder meetbereik`
+  of `boven meetbereik`) in plaats van altijd "onder meetbereik".
+
+### Added
+- Parsertests voor het klemmen bij overrange en voor het ongemoeid laten van een
+  normale meting.
+
 ## [1.0.1-mh.1] - 2026-08-01
 
 ### Fixed
@@ -192,6 +214,7 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[1.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.0-mh.1
 [1.0.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.1-mh.1
 [1.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.0-mh.1
 [0.9.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.9.0-mh.1
