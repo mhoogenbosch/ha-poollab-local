@@ -98,6 +98,7 @@ async def async_setup_entry(
         PoolLabProxySensor(coordinator, address),
         PoolLabStoredResultsSensor(coordinator, address),
         PoolLabClockDriftSensor(coordinator, address),
+        PoolLabContrastSensor(coordinator, address),
     ]
 
     # Recreate a sensor for every measurement type ever seen on this device
@@ -368,6 +369,27 @@ class PoolLabClockDriftSensor(PoolLabBaseEntity, SensorEntity):
         if device_time is None or read_at is None:
             return None
         return round((device_time - read_at).total_seconds())
+
+
+class PoolLabContrastSensor(PoolLabBaseEntity, SensorEntity):
+    """Last known LCD contrast level (device range 18-38).
+
+    The protocol has no "read contrast" command - the level only comes back in
+    the reply to a plus/minus step, so this stays empty until you nudge it.
+    """
+
+    _attr_name = "LCD-contrast"
+    _attr_icon = "mdi:contrast-box"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_contrast"
+
+    @property
+    def native_value(self) -> int | None:
+        return (self.coordinator.data or {}).get("device_info", {}).get("contrast")
 
 
 class PoolLabLastMeasurementSensor(PoolLabBaseEntity, SensorEntity):

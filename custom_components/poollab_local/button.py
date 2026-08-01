@@ -25,6 +25,11 @@ async def async_setup_entry(
         [
             PoolLabRefreshButton(coordinator, address),
             PoolLabSetTimeButton(coordinator, address),
+            PoolLabSleepButton(coordinator, address),
+            PoolLabRestartButton(coordinator, address),
+            PoolLabContrastUpButton(coordinator, address),
+            PoolLabContrastDownButton(coordinator, address),
+            PoolLabEraseMemoryButton(coordinator, address),
         ]
     )
 
@@ -93,3 +98,92 @@ class PoolLabSetTimeButton(PoolLabRefreshButton):
     async def async_press(self) -> None:
         """Send PCMD_API_SET_TIME with the current time."""
         await self.coordinator.async_set_device_time()
+
+
+class PoolLabSleepButton(PoolLabRefreshButton):
+    """Sends the device into deep sleep, as if holding the power button.
+
+    Saves battery after a read: the device draws under 20 uA asleep, versus
+    staying awake for its ~300 second auto-off timer.
+    """
+
+    _attr_name = "Slaapstand"
+    _attr_icon = "mdi:power-sleep"
+    _attr_device_class = None
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_sleep_button"
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_sleep_device()
+
+
+class PoolLabRestartButton(PoolLabRefreshButton):
+    """Restarts the device."""
+
+    _attr_name = "Herstarten"
+    _attr_icon = "mdi:restart"
+    _attr_device_class = ButtonDeviceClass.RESTART
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_restart_button"
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_reset_device()
+
+
+class PoolLabContrastUpButton(PoolLabRefreshButton):
+    """Raises the LCD contrast one level (device range 18-38)."""
+
+    _attr_name = "Contrast omhoog"
+    _attr_icon = "mdi:brightness-7"
+    _attr_device_class = None
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_contrast_up"
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_step_contrast(increase=True)
+
+
+class PoolLabContrastDownButton(PoolLabRefreshButton):
+    """Lowers the LCD contrast one level (device range 18-38)."""
+
+    _attr_name = "Contrast omlaag"
+    _attr_icon = "mdi:brightness-5"
+    _attr_device_class = None
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_contrast_down"
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_step_contrast(increase=False)
+
+
+class PoolLabEraseMemoryButton(PoolLabRefreshButton):
+    """Erases every stored measurement on the device.
+
+    Disabled by default: this is irreversible and wipes the device's entire
+    measurement history, which is the only copy when you don't use the cloud.
+    """
+
+    _attr_name = "Geheugen wissen"
+    _attr_icon = "mdi:database-remove"
+    _attr_device_class = None
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_erase_memory"
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_reset_measures()

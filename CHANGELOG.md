@@ -5,6 +5,35 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [1.0.0-mh.1] - 2026-08-01
+
+Alle commando's uit de officiële BLE-API zijn nu ontsloten. Daarmee is de integratie
+functioneel compleet: er zit niets meer in het protocol dat ongebruikt blijft.
+
+### Added
+- **Knop "Slaapstand"** (`SLEEP_DEVICE`, `0x04`): zet het apparaat direct in diepe
+  slaap, hetzelfde als de aan/uitknop ingedrukt houden. Scheelt batterij — slapend
+  trekt het apparaat onder 20 µA (typisch 8,5 µA) in plaats van wakker te blijven tot
+  de automatische uitschakeling na ~300 s.
+- **Knop "Herstarten"** (`RESET_DEVICE`, `0x03`).
+- **Knoppen "Contrast omhoog/omlaag"** (`0x08`/`0x09`): stapt het LCD-contrast één
+  niveau, binnen het bereik 18–38. Staat het al op de grens, dan meldt het apparaat dat
+  met resultaatcode `0x02`; dat wordt als normale uitkomst gelogd, niet als fout.
+- **Sensor "LCD-contrast"** met het laatst bekende niveau. Standaard uitgeschakeld: het
+  protocol kent geen "lees contrast"-commando, dus de waarde is pas bekend ná een stap.
+- **Keuzelijst "Eenheid"** (`GET/SET_PPM_MGL`, `0x0A`/`0x0B`): schakelt het apparaat
+  tussen ppm en mg/L. De huidige stand wordt bij elke uitlezing meegelezen.
+- **Knop "Geheugen wissen"** (`RESET_MEASURES`, `0x06`). **Standaard uitgeschakeld**,
+  want onomkeerbaar: het wist de volledige meetgeschiedenis van het apparaat, en zonder
+  cloud is dat de enige kopie.
+
+### Fixed
+- `RESET_DEVICE` en `SLEEP_DEVICE` geven per definitie **geen antwoord** — het apparaat
+  schakelt zijn radio onmiddellijk uit. Ze gaan daarom niet door de normale
+  commandoroutine, die op een notificatie wacht en dus altijd in een timeout zou lopen.
+  De schrijfactie zelf mag ook falen; de documentatie noemt dat platformafhankelijk en
+  verwacht gedrag, dus dat wordt gelogd op debugniveau in plaats van als fout gemeld.
+
 ## [0.9.0-mh.1] - 2026-08-01
 
 De officiële API-documentatie ([BLE.pdf](https://poollab.org/static/api/BLE.pdf), v2)
@@ -151,6 +180,7 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[1.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.0-mh.1
 [0.9.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.9.0-mh.1
 [0.8.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.8.0-mh.1
 [0.7.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.7.0-mh.1

@@ -104,6 +104,11 @@ aantal seconden.
 |---|---|---|
 | `button.poollab_nu_ophalen` | knop | Verbindt nu en haalt de opgeslagen metingen op |
 | `button.poollab_klok_gelijkzetten` | knop | Zet de apparaatklok gelijk met Home Assistant |
+| `button.poollab_slaapstand` | knop | Zet het apparaat in diepe slaap (bespaart batterij) |
+| `button.poollab_herstarten` | knop | Herstart het apparaat |
+| `button.poollab_contrast_omhoog` / `_omlaag` | knop | LCD-contrast één niveau (bereik 18–38) |
+| `button.poollab_geheugen_wissen` | knop | Wist alle metingen — **standaard uit**, onomkeerbaar |
+| `select.poollab_eenheid` | keuzelijst | Apparaatweergave in ppm of mg/L |
 | `sensor.poollab_<parameter>` | sensor | Eén per gemeten parameter (pH, vrij chloor, …) |
 | `sensor.poollab_laatste_meting` | sensor | Tijdstip van de meest recente meting |
 | `binary_sensor.poollab_bereikbaar` | diagnostisch | Ziet Home Assistant het apparaat nú? |
@@ -112,6 +117,7 @@ aantal seconden.
 | `sensor.poollab_opgeslagen_metingen` | diagnostisch | Aantal metingen in het apparaatgeheugen (max 256) |
 | `sensor.poollab_klokafwijking` | diagnostisch | Verschil tussen apparaatklok en Home Assistant, in seconden |
 | `sensor.poollab_batterij` | diagnostisch | Batterijniveau in procenten |
+| `sensor.poollab_lcd_contrast` | diagnostisch | Laatst bekende contrastniveau — **standaard uit** |
 
 Meetsensoren worden pas aangemaakt zodra die parameter een keer gemeten is, en blijven
 daarna bestaan. Waarden overleven een herstart van Home Assistant.

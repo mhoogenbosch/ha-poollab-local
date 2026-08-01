@@ -33,11 +33,19 @@ from .const import (
     CHAR_MOSI_CMD_UUID,
     CMD_GET_INFO,
     CMD_GET_MEASURES,
+    CMD_GET_PPM_MGL,
+    CMD_RESET_DEVICE,
+    CMD_RESET_MEASURES,
+    CMD_SET_CONTRAST_MINUS,
+    CMD_SET_CONTRAST_PLUS,
+    CMD_SET_PPM_MGL,
     CMD_SET_TIME,
+    CMD_SLEEP_DEVICE,
     DEFAULT_TIMEOUT,
     MEASURE_STATUS_UNDERRANGE,
     MEASUREMENT_TYPES,
     PREAMBLE,
+    RESULT_ERR,
     UPDATE_INTERVAL_SECONDS,
 )
 
@@ -64,6 +72,9 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # trips, so we serialize polls defensively even though the
         # coordinator itself shouldn't normally overlap calls.
         self._lock = asyncio.Lock()
+        # The device has no "get contrast" command, so the level is only known
+        # after a plus/minus step. None until the user nudges it.
+        self._contrast: int | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         async with self._lock:
@@ -128,6 +139,133 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Pull fresh data so the reported device_time reflects the new clock.
         await self.async_request_refresh()
 
+    async def _fire_and_forget(self, command_id: int, label: str) -> None:
+        """Send a command that produces no response.
+
+        RESET_DEVICE and SLEEP_DEVICE kill the radio immediately, so there is
+        no notification to wait for. Per the API docs the write itself may even
+        fail depending on the platform - that is expected, not an error.
+        """
+        async with self._lock:
+            client: BleakClientWithServiceCache | None = None
+            try:
+                client, _ = await self._connect()
+                payload = bytearray(7)
+                payload[0] = PREAMBLE
+                payload[1] = command_id & 0xFF
+                payload[2] = (command_id >> 8) & 0xFF
+                try:
+                    await client.write_gatt_char(
+                        CHAR_MOSI_CMD_UUID, bytes(payload), response=False
+                    )
+                except (BleakError, TimeoutError) as err:
+                    _LOGGER.debug(
+                        "%s: write reported %s - expected, the device drops the "
+                        "connection immediately", label, err
+                    )
+                _LOGGER.info("PoolLab: %s sent", label)
+            except TimeoutError as err:
+                raise UpdateFailed(f"Timed out sending {label}: {err}") from err
+            except BleakError as err:
+                raise UpdateFailed(f"Bluetooth error sending {label}: {err}") from err
+            finally:
+                if client is not None:
+                    try:
+                        await client.disconnect()
+                    except BleakError:
+                        pass
+
+    async def async_sleep_device(self) -> None:
+        """Put the device into deep sleep (same as holding the power button)."""
+        await self._fire_and_forget(CMD_SLEEP_DEVICE, "slaapstand")
+
+    async def async_reset_device(self) -> None:
+        """Restart the device."""
+        await self._fire_and_forget(CMD_RESET_DEVICE, "herstart")
+
+    async def async_reset_measures(self) -> None:
+        """Erase every stored measurement on the device. Irreversible."""
+        async with self._lock:
+            client: BleakClientWithServiceCache | None = None
+            try:
+                client, response_ready = await self._connect()
+                raw = await self._send_command(
+                    client, response_ready, CMD_RESET_MEASURES, b""
+                )
+                if len(raw) > 1 and raw[1] == RESULT_ERR:
+                    raise UpdateFailed("PoolLab refused to erase its memory")
+                _LOGGER.info("PoolLab: stored measurements erased")
+            except TimeoutError as err:
+                raise UpdateFailed(f"Timed out erasing PoolLab memory: {err}") from err
+            except BleakError as err:
+                raise UpdateFailed(f"Bluetooth error erasing PoolLab memory: {err}") from err
+            finally:
+                if client is not None:
+                    try:
+                        await client.disconnect()
+                    except BleakError:
+                        pass
+
+        await self.async_request_refresh()
+
+    async def async_step_contrast(self, increase: bool) -> int | None:
+        """Nudge the LCD contrast one level (range 18-38); returns the new level."""
+        command = CMD_SET_CONTRAST_PLUS if increase else CMD_SET_CONTRAST_MINUS
+        label = "contrast omhoog" if increase else "contrast omlaag"
+        async with self._lock:
+            client: BleakClientWithServiceCache | None = None
+            try:
+                client, response_ready = await self._connect()
+                raw = await self._send_command(client, response_ready, command, b"")
+                if len(raw) < 4:
+                    return None
+                if raw[1] == RESULT_ERR:
+                    # Already at the end of the range - not a failure worth raising.
+                    _LOGGER.info("PoolLab: %s geweigerd (grens bereikt)", label)
+                    return None
+                level = struct.unpack_from("<H", raw, 2)[0]
+                _LOGGER.info("PoolLab: contrast is nu %s", level)
+                self._contrast = level
+                return level
+            except TimeoutError as err:
+                raise UpdateFailed(f"Timed out setting contrast: {err}") from err
+            except BleakError as err:
+                raise UpdateFailed(f"Bluetooth error setting contrast: {err}") from err
+            finally:
+                if client is not None:
+                    try:
+                        await client.disconnect()
+                    except BleakError:
+                        pass
+
+    async def async_set_unit_mode(self, mg_per_litre: bool) -> None:
+        """Switch the device between ppm and mg/L display mode."""
+        async with self._lock:
+            client: BleakClientWithServiceCache | None = None
+            try:
+                client, response_ready = await self._connect()
+                await self._send_command(
+                    client,
+                    response_ready,
+                    CMD_SET_PPM_MGL,
+                    bytes([1 if mg_per_litre else 0]),
+                )
+                _LOGGER.info(
+                    "PoolLab: eenheid gezet op %s", "mg/L" if mg_per_litre else "ppm"
+                )
+            except TimeoutError as err:
+                raise UpdateFailed(f"Timed out setting unit mode: {err}") from err
+            except BleakError as err:
+                raise UpdateFailed(f"Bluetooth error setting unit mode: {err}") from err
+            finally:
+                if client is not None:
+                    try:
+                        await client.disconnect()
+                    except BleakError:
+                        pass
+
+        await self.async_request_refresh()
+
     async def _poll_device(self) -> dict[str, Any]:
         client: BleakClientWithServiceCache | None = None
         try:
@@ -137,6 +275,16 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 client, response_ready, CMD_GET_INFO, b""
             )
             info = self._parse_info(info_raw)
+
+            # Unit mode is a separate command; cheap enough to fold into the poll.
+            try:
+                unit_raw = await self._send_command(
+                    client, response_ready, CMD_GET_PPM_MGL, b""
+                )
+                if len(unit_raw) > 1 and unit_raw[0] == PREAMBLE:
+                    info["unit_mode"] = "mg/L" if unit_raw[1] == 1 else "ppm"
+            except (TimeoutError, BleakError) as err:
+                _LOGGER.debug("Could not read unit mode: %s", err)
 
             result_count = info["result_count"]
             measurements: dict[int, dict[str, Any]] = {}
@@ -172,6 +320,8 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if existing is None or record["timestamp"] > existing["timestamp"]:
                             target[record["type_id"]] = record
                 cell_id += 1
+
+            info["contrast"] = self._contrast
 
             return {
                 "device_info": info,
