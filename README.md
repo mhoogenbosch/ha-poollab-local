@@ -104,12 +104,31 @@ aantal seconden.
 |---|---|---|
 | `button.poollab_nu_ophalen` | knop | Verbindt nu en haalt de opgeslagen metingen op |
 | `button.poollab_klok_gelijkzetten` | knop | Zet de apparaatklok gelijk met Home Assistant |
-| `sensor.poollab_batterij` | sensor | Batterijniveau in procenten (diagnostisch) |
-| `sensor.poollab_laatste_meting` | sensor | Tijdstip van de meest recente meting |
 | `sensor.poollab_<parameter>` | sensor | Eén per gemeten parameter (pH, vrij chloor, …) |
+| `sensor.poollab_laatste_meting` | sensor | Tijdstip van de meest recente meting |
+| `binary_sensor.poollab_bereikbaar` | diagnostisch | Ziet Home Assistant het apparaat nú? |
+| `sensor.poollab_signaalsterkte` | diagnostisch | RSSI van de laatste advertentie, in dBm |
+| `sensor.poollab_batterij` | diagnostisch | Batterijniveau in procenten |
 
 Meetsensoren worden pas aangemaakt zodra die parameter een keer gemeten is, en blijven
 daarna bestaan. Waarden overleven een herstart van Home Assistant.
+
+### Weten of het apparaat bereikbaar is
+
+De PoolLab staat het grootste deel van de tijd uit, dus een mislukte uitlezing is
+meestal geen storing. **`binary_sensor.poollab_bereikbaar`** laat live zien of Home
+Assistant het apparaat hoort adverteren — handig om te bepalen of het zin heeft om op
+**Nu ophalen** te drukken. De attributen vertellen de rest:
+
+| Attribuut | Betekenis |
+|---|---|
+| `ontvangen_via` | Welke adapter of Bluetooth-proxy het apparaat hoort |
+| `signaalsterkte_dbm` | RSSI van de laatste advertentie |
+| `laatste_uitlezing_gelukt` | Of de meest recente uitlezing slaagde |
+
+`sensor.poollab_signaalsterkte` geeft diezelfde RSSI als losse waarde, zodat je kunt
+zien of een proxy dichter bij het bad nodig is. Staat het apparaat uit, dan wordt die
+sensor leeg in plaats van dat er een verouderde waarde blijft staan.
 
 ### Attributen per meetsensor
 
@@ -198,10 +217,13 @@ logger:
     custom_components.poollab_local: debug
 ```
 
+Kijk eerst naar `binary_sensor.poollab_bereikbaar`: staat die uit, dan ziet Home
+Assistant het apparaat simpelweg niet en heeft uitlezen geen zin.
+
 | Symptoom | Oorzaak en oplossing |
 |---|---|
-| `was not seen by any Bluetooth adapter/proxy` | Het apparaat staat uit of is buiten bereik. Zet het aan; het gaat na ~300 s vanzelf weer uit. |
-| `Timed out talking to PoolLab` | De verbinding lukte, maar het apparaat antwoordde niet. Meestal bezet de **LabCOM-app** de enige BLE-verbinding, of het apparaat staat in een meetstand of menu. Sluit de app, ga terug naar het hoofdscherm en probeer opnieuw. |
+| `was not seen by any Bluetooth adapter/proxy` | Het apparaat staat uit of is buiten bereik. Zet het aan; het gaat na ~300 s vanzelf weer uit. In het debug-log herken je dit aan een uitlezing die in **0,000 seconden** faalt: er is dan nog geen enkele Bluetooth-actie geweest. |
+| `Timed out talking to PoolLab` | De verbinding lukte, maar het apparaat antwoordde niet — in het log een uitlezing van **~21 seconden**. Meestal bezet de **LabCOM-app** de enige BLE-verbinding, of het apparaat staat in een meetstand of menu. Sluit de app, ga terug naar het hoofdscherm en probeer opnieuw. |
 | Geen meetsensoren, alleen batterij | Het apparaatgeheugen is leeg. Doe een meting en druk op **Nu ophalen**. |
 | Waarde `0.0` bij pH | Kijk naar `status`: bij `onder meetbereik` was de meting zelf ongeldig (geen reagenstablet). |
 | `measured_at` klopt niet | De apparaatklok is verlopen. Druk op **Klok gelijkzetten**. |

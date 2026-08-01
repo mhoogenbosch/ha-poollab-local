@@ -9,8 +9,14 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ADDRESS, EntityCategory, PERCENTAGE
+from homeassistant.const import (
+    CONF_ADDRESS,
+    EntityCategory,
+    PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -58,6 +64,7 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         PoolLabBatterySensor(coordinator, address),
         PoolLabLastMeasurementSensor(coordinator, address),
+        PoolLabSignalSensor(coordinator, address),
     ]
 
     # Recreate a sensor for every measurement type ever seen on this device
@@ -164,6 +171,72 @@ class PoolLabBatterySensor(PoolLabBaseEntity, SensorEntity):
             if value is not None:
                 return value
         return self._restored_value
+
+
+class PoolLabSignalSensor(SensorEntity):
+    """Signal strength of the last advertisement, and which proxy heard it.
+
+    Not a CoordinatorEntity: this tracks live Bluetooth reception rather than
+    the result of the last on-demand read.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Signaalsterkte"
+    _attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
+    _attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = True
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        self._coordinator = coordinator
+        self._address = address
+        self._attr_unique_id = f"{address}_signal_strength"
+        self._rssi: int | None = None
+        self._extra: dict[str, Any] = {}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        info = (self._coordinator.data or {}).get("device_info", {})
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._address)},
+            connections={("bluetooth", self._address)},
+            name="PoolLab",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            sw_version=str(info.get("fw_version", "")) or None,
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        return self._rssi
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return self._extra
+
+    async def async_update(self) -> None:
+        service_info = bluetooth.async_last_service_info(
+            self.hass, self._address, connectable=True
+        )
+        if service_info is None:
+            # Device is off/out of range; drop the value rather than keep a
+            # stale one that suggests the device is still within reach.
+            self._rssi = None
+            self._extra = {}
+            return
+
+        self._rssi = service_info.rssi
+        source = getattr(service_info, "source", None)
+        name = str(source) if source else "onbekend"
+        if source:
+            try:
+                scanner = bluetooth.async_scanner_by_source(self.hass, source)
+            except Exception:  # noqa: BLE001 - helper availability varies per HA version
+                scanner = None
+            if scanner is not None:
+                name = getattr(scanner, "name", None) or name
+        self._extra = {"ontvangen_via": name}
 
 
 class PoolLabLastMeasurementSensor(PoolLabBaseEntity, SensorEntity):

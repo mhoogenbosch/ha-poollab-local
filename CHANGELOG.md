@@ -5,6 +5,25 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [0.7.0-mh.1] - 2026-08-01
+
+Diagnostiek, zodat je niet meer in het logbestand hoeft te duiken om te weten of het
+apparaat überhaupt bereikbaar is.
+
+### Added
+- **`binary_sensor.poollab_bereikbaar`** (device class `connectivity`): laat live zien
+  of Home Assistant de PoolLab hoort adverteren. Bewust géén `CoordinatorEntity` — dit
+  volgt de actuele Bluetooth-ontvangst, niet de uitkomst van de laatste uitlezing.
+  Attributen: `ontvangen_via` (welke adapter of proxy), `signaalsterkte_dbm` en
+  `laatste_uitlezing_gelukt`.
+- **`sensor.poollab_signaalsterkte`**: RSSI van de laatste advertentie in dBm, met
+  `ontvangen_via` als attribuut. Handig om te bepalen of er een proxy dichter bij het
+  bad nodig is. Wordt leeggemaakt zodra het apparaat niet meer gezien wordt, zodat er
+  geen verouderde waarde blijft staan die suggereert dat het nog in bereik is.
+- README: uitleg over de bereikbaarheidssensor, en de twee foutwijzen zijn nu aan hun
+  kenmerkende duur in het log te herkennen (0,000 s = apparaat uit; ~21 s = verbonden
+  maar geen antwoord).
+
 ## [0.6.0-mh.1] - 2026-08-01
 
 Eerste versie die op echte hardware is bevestigd (PoolLab 1.0, MAC-prefix `60:44:7A:`).
@@ -74,5 +93,6 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[0.7.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.7.0-mh.1
 [0.6.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.6.0-mh.1
 [0.5.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.5.0-mh.1
