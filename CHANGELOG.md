@@ -22,6 +22,14 @@ en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
   een sensor (zonder waarde), zodat zichtbaar is dát er gemeten is.
 
 ### Added
+- **Eigen integratielogo.** De integratie toonde "Icon not available" in
+  Instellingen → Apparaten en diensten. Sinds Home Assistant 2026.3 kan een
+  custom integration zijn merkafbeeldingen zelf meeleveren via de
+  [brands proxy API](https://developers.home-assistant.io/blog/2026/02/24/brands-proxy-api/):
+  `brand/icon.png` (256×256) en `brand/icon@2x.png` (512×512), zonder wijziging
+  in `manifest.json`. Een pull request naar `home-assistant/brands` is daarvoor
+  niet meer nodig — die repository sluit PR's voor `custom_integrations/*`
+  inmiddels automatisch.
 - Iconen voor alle entiteiten: pH krijgt `mdi:ph`, overige parameters
   `mdi:test-tube`, en de bereikbaarheidssensor wisselt tussen
   `mdi:bluetooth-connect` en `mdi:bluetooth-off`.
