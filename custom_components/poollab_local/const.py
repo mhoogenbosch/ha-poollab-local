@@ -133,12 +133,20 @@ MEASUREMENT_TYPES: dict[int, tuple[str, str, int]] = {
 }
 
 # --- Technisch meetbereik van het apparaat (type_id -> (min, max)) ---
-# Overgenomen uit de officiele API-documentatie, tabel "Measurement Result
-# Types" (pp. 21-22). Dit is wat het apparaat kan meten; ligt een meting
-# hierbuiten dan rapporteert het zelf underrange of overrange. Niet te
-# verwarren met IDEAL_RANGES, dat zijn de streefwaarden voor het water.
+# Basis: de officiele API-documentatie, tabel "Measurement Result Types"
+# (pp. 21-22). Dit is wat het apparaat kan meten; ligt een meting hierbuiten
+# dan rapporteert het zelf underrange of overrange. Niet te verwarren met
+# IDEAL_RANGES, dat zijn de streefwaarden voor het water.
+#
+# LET OP: op twee punten wijkt de API-doc af van de gebruikershandleiding
+# (poollab_manual_gb-fr-e-d-i.pdf), die per test een schaalbalk met het bereik
+# toont. De handleiding is hier leidend, want die beschrijft wat het apparaat
+# daadwerkelijk meet:
+#   - Totaal chloor: API-doc 0,60 vs handleiding 0-8,00 (p.32). 0,60 kan niet
+#     kloppen - een zwembad voert 1-3 ppm, en vrij chloor staat op 0-6.
+#   - Totale alkaliniteit: API-doc 300 vs handleiding 0-200 (p.22).
 MEASUREMENT_RANGES: dict[int, tuple[float, float]] = {
-    1: (0.00, 0.60),
+    1: (0.00, 8.00),   # handleiding p.32: 0-8,00 (API-doc zegt 0,60 - typefout)
     2: (0.00, 4.00),
     3: (0.00, 11.40),
     5: (0.00, 30.00),
@@ -146,7 +154,7 @@ MEASUREMENT_RANGES: dict[int, tuple[float, float]] = {
     7: (0.00, 2.90),
     8: (0.00, 6.00),
     9: (6.50, 8.40),
-    10: (0.00, 300.00),
+    10: (0.00, 200.00),  # handleiding p.22: 0-200 (API-doc zegt 300)
     11: (0.00, 160.00),
     12: (0.00, 200.00),
     13: (0.00, 500.00),

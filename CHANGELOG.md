@@ -5,6 +5,18 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [1.0.1-mh.1] - 2026-08-01
+
+### Fixed
+- **Twee meetbereiken gecorrigeerd.** De API-documentatie en de
+  gebruikershandleiding spreken elkaar tegen; de handleiding toont per test een
+  schaalbalk met het werkelijke bereik en is hier leidend.
+  - **Totaal chloor**: 0–0,60 → **0–8,00 ppm** (handleiding p. 32). De 0,60 uit
+    de API-doc kan niet kloppen — een zwembad voert 1–3 ppm en vrij chloor
+    staat op 0–6.
+  - **Totale alkaliniteit**: 0–300 → **0–200 ppm** (handleiding p. 22). Dit
+    verschuift de grens waarboven het apparaat `OR` (overrange) meldt.
+
 ## [1.0.0-mh.1] - 2026-08-01
 
 Alle commando's uit de officiële BLE-API zijn nu ontsloten. Daarmee is de integratie
@@ -180,6 +192,7 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[1.0.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.1-mh.1
 [1.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.0-mh.1
 [0.9.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.9.0-mh.1
 [0.8.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v0.8.0-mh.1
