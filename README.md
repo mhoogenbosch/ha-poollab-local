@@ -1,206 +1,208 @@
 <p align="center">
-  <img src="images/banner.svg" alt="PoolLab Local — lokale Bluetooth-integratie voor Home Assistant" width="100%">
+  <img src="images/banner.svg" alt="PoolLab Local — local Bluetooth integration for Home Assistant" width="100%">
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/HACS-custom%20repository-41BDF5?style=flat-square" alt="HACS custom repository">
   <img src="https://img.shields.io/badge/Home%20Assistant-2024.6%2B-41BDF5?style=flat-square" alt="Home Assistant 2024.6+">
-  <img src="https://img.shields.io/badge/verbinding-100%25%20lokaal-16A34A?style=flat-square" alt="100% lokaal">
-  <img src="https://img.shields.io/badge/apparaat-PoolLab%201.0-0EA5E9?style=flat-square" alt="PoolLab 1.0">
+  <img src="https://img.shields.io/badge/connection-100%25%20local-16A34A?style=flat-square" alt="100% local">
+  <img src="https://img.shields.io/badge/device-PoolLab%201.0-0EA5E9?style=flat-square" alt="PoolLab 1.0">
 </p>
 
-Leest de **PoolLab 1.0** watertester van Water-i.d. rechtstreeks uit over Bluetooth
-LE en zet elke meetparameter als sensor in Home Assistant. Geen cloud, geen account,
-geen app die eerst moet synchroniseren.
+Reads the **PoolLab 1.0** water tester by Water-i.d. directly over Bluetooth LE and
+exposes every measured parameter as a sensor in Home Assistant. No cloud, no account,
+no app that has to sync first.
 
 > [!NOTE]
-> Fork van [mf76130/ha-poollab-local](https://github.com/mf76130/ha-poollab-local) v0.4.1,
-> met bugfixes, een meettijdstip, kloksynchronisatie, offline parsertests en een
-> Nederlandse interface. Zie [CHANGELOG.md](CHANGELOG.md) voor alle verschillen.
+> Fork of [mf76130/ha-poollab-local](https://github.com/mf76130/ha-poollab-local) v0.4.1,
+> with bug fixes, measurement timestamps, clock synchronisation, offline parser tests and
+> full device control. See [CHANGELOG.md](CHANGELOG.md) for everything that changed.
 
 ---
 
-## Waarom lokaal?
+## Why local?
 
-De bekende PoolLab-integraties voor Home Assistant —
-[dala318/python_poollab](https://github.com/dala318/python_poollab) en
-[stefanh12/Poollab](https://github.com/stefanh12/Poollab) — halen hun gegevens op bij
-`labcom.cloud`. Je moet dan eerst met de LabCOM-app naar de cloud synchroniseren
-voordat Home Assistant iets ziet, en je meetgegevens verlaten je huis.
+The existing PoolLab integrations for Home Assistant —
+[dala318/python_poollab](https://github.com/dala318/python_poollab) and
+[stefanh12/Poollab](https://github.com/stefanh12/Poollab) — fetch their data from
+`labcom.cloud`. That means syncing with the LabCOM app before Home Assistant sees
+anything, and your readings leave your house.
 
-Deze integratie praat rechtstreeks met het apparaat. De fabrikant publiceert het
-protocol zelf ([BLE.pdf](https://poollab.org/static/api/BLE.pdf), Water-i.d. GmbH,
-versie 2), dus er komt geen reverse-engineering aan te pas.
+This integration talks to the device directly. The manufacturer
+[publishes the protocol itself](https://poollab.org/static/api/BLE.pdf) (Water-i.d. GmbH,
+version 2), so no reverse engineering is involved.
 
-| | Cloud-integraties | **PoolLab Local** |
+| | Cloud integrations | **PoolLab Local** |
 |---|---|---|
-| Verbinding | Internet → labcom.cloud | Bluetooth LE, rechtstreeks |
-| Account nodig | Ja, met API-token | Nee |
-| App-sync vooraf | Ja | Nee |
-| Werkt zonder internet | Nee | Ja |
-| Meetgegevens verlaten het huis | Ja | Nee |
+| Connection | Internet → labcom.cloud | Bluetooth LE, direct |
+| Account required | Yes, with an API token | No |
+| App sync first | Yes | No |
+| Works without internet | No | Yes |
+| Readings leave your home | Yes | No |
 
 ---
 
-## Vereisten
+## Requirements
 
-- Home Assistant **2024.6** of nieuwer, met de Bluetooth-integratie actief
-- Bluetooth-ontvangst binnen bereik van het apparaat. Dat kan een adapter in de
-  HA-host zijn, of een **ESPHome Bluetooth-proxy**. Die proxy moet actieve
-  verbindingen toestaan:
+- Home Assistant **2024.6** or newer with the Bluetooth integration enabled
+- Bluetooth reception within range of the device: an adapter in the Home Assistant host,
+  or an **ESPHome Bluetooth proxy**. That proxy must allow active connections:
 
   ```yaml
   esp32_ble_tracker:
     scan_parameters:
       active: true
   bluetooth_proxy:
-    active: true      # verplicht — passief meeluisteren volstaat niet
+    active: true      # required — passive listening is not enough
   ```
 
-  Het protocol is een commando/antwoord-uitwisseling, dus er moet een echte
-  GATT-verbinding opgezet kunnen worden.
+  The protocol is a command/response exchange, so a real GATT connection is needed.
 
 ---
 
-## Installatie
+## Installation
 
-### Via HACS (aanbevolen)
+### Via HACS (recommended)
 
-1. HACS → drie puntjes rechtsboven → **Custom repositories**
-2. Repository `https://github.com/mhoogenbosch/ha-poollab-local`, categorie **Integration**
-3. Zoek **PoolLab Local**, klik **Download**
-4. **Herstart Home Assistant** (verplicht voor nieuwe integraties)
-5. Zet de PoolLab aan binnen bereik van een proxy → hij verschijnt vanzelf onder
-   **Instellingen → Apparaten en diensten** als ontdekt apparaat. Bevestigen is genoeg;
-   er is niets in te vullen.
+1. HACS → three-dot menu → **Custom repositories**
+2. Repository `https://github.com/mhoogenbosch/ha-poollab-local`, category **Integration**
+3. Search for **PoolLab Local** and click **Download**
+4. **Restart Home Assistant** (required for new integrations)
+5. Switch the PoolLab on within range of a proxy → it shows up under
+   **Settings → Devices & Services** as a discovered device. Confirming is all it takes;
+   there is nothing to fill in.
 
-Verschijnt hij niet vanzelf, kies dan **Integratie toevoegen → PoolLab Local** en
-selecteer het apparaat uit de lijst.
+If it does not appear on its own, use **Add integration → PoolLab Local** and pick the
+device from the list.
 
-### Handmatig
+### Manual
 
-Kopieer `custom_components/poollab_local` naar de `custom_components`-map van je
-Home Assistant-configuratie en herstart.
+Copy `custom_components/poollab_local` into the `custom_components` folder of your Home
+Assistant configuration and restart.
 
 ---
 
-## Gebruik
+## Usage
 
-De PoolLab schakelt zichzelf standaard na **ongeveer 300 seconden** uit en accepteert
-maar **één BLE-verbinding tegelijk**. De werkwijze is daarom:
+The PoolLab powers itself off after roughly **300 seconds** and accepts only **one BLE
+connection at a time**. So the workflow is:
 
-1. Doe je meting op het apparaat zoals gebruikelijk
-2. Druk binnen dat tijdvenster in Home Assistant op **Nu ophalen**
-3. Per gemeten parameter verschijnt een sensor met de nieuwste waarde
+1. Take your measurement on the device as usual
+2. Press **Fetch now** in Home Assistant within that window
+3. A sensor appears for each measured parameter, holding the latest value
 
-Er is bewust **geen achtergrond-polling**. Dat zou alleen maar Bluetooth-verkeer
-opleveren voor een apparaat dat een paar keer per week aanstaat, en botsen met de
-LabCOM-app. Wil je het toch, zet dan `UPDATE_INTERVAL_SECONDS` in `const.py` op een
-aantal seconden.
+There is deliberately **no background polling**. It would only generate Bluetooth traffic
+for a device that is switched on a few times a week, and clash with the LabCOM app. If you
+want it anyway, set `UPDATE_INTERVAL_SECONDS` in `const.py` to a number of seconds.
 
-### Entiteiten
+### Entities
 
-| Entiteit | Type | Omschrijving |
+| Entity | Type | Description |
 |---|---|---|
-| `button.poollab_nu_ophalen` | knop | Verbindt nu en haalt de opgeslagen metingen op |
-| `button.poollab_klok_gelijkzetten` | knop | Zet de apparaatklok gelijk met Home Assistant |
-| `button.poollab_slaapstand` | knop | Zet het apparaat in diepe slaap (bespaart batterij) |
-| `button.poollab_herstarten` | knop | Herstart het apparaat |
-| `button.poollab_contrast_omhoog` / `_omlaag` | knop | LCD-contrast één niveau (bereik 18–38) |
-| `button.poollab_geheugen_wissen` | knop | Wist alle metingen — **standaard uit**, onomkeerbaar |
-| `select.poollab_eenheid` | keuzelijst | Apparaatweergave in ppm of mg/L |
-| `sensor.poollab_<parameter>` | sensor | Eén per gemeten parameter (pH, vrij chloor, …) |
-| `sensor.poollab_laatste_meting` | sensor | Tijdstip van de meest recente meting |
-| `binary_sensor.poollab_bereikbaar` | diagnostisch | Ziet Home Assistant het apparaat nú? |
-| `sensor.poollab_via_proxy` | diagnostisch | Welke adapter of Bluetooth-proxy het apparaat hoort |
-| `sensor.poollab_signaalsterkte` | diagnostisch | RSSI van de laatste advertentie, in dBm |
-| `sensor.poollab_opgeslagen_metingen` | diagnostisch | Aantal metingen in het apparaatgeheugen (max 256) |
-| `sensor.poollab_klokafwijking` | diagnostisch | Verschil tussen apparaatklok en Home Assistant, in seconden |
-| `sensor.poollab_batterij` | diagnostisch | Batterijniveau in procenten |
-| `sensor.poollab_lcd_contrast` | diagnostisch | Laatst bekende contrastniveau — **standaard uit** |
+| `button.poollab_fetch_now` | button | Connect now and pull the stored measurements |
+| `button.poollab_set_clock` | button | Sync the device clock with Home Assistant |
+| `button.poollab_sleep` | button | Put the device into deep sleep (saves battery) |
+| `button.poollab_restart` | button | Restart the device |
+| `button.poollab_contrast_up` / `_down` | button | LCD contrast one step (range 18–38) |
+| `button.poollab_erase_memory` | button | Wipe all measurements — **disabled by default**, irreversible |
+| `select.poollab_unit` | select | Device display in ppm or mg/L |
+| `sensor.poollab_<parameter>` | sensor | One per measured parameter (pH, free chlorine, …) |
+| `sensor.poollab_last_measurement` | sensor | Timestamp of the most recent measurement |
+| `binary_sensor.poollab_reachable` | diagnostic | Does Home Assistant see the device right now? |
+| `sensor.poollab_via_proxy` | diagnostic | Which adapter or Bluetooth proxy hears the device |
+| `sensor.poollab_signal_strength` | diagnostic | RSSI of the last advertisement, in dBm |
+| `sensor.poollab_stored_measurements` | diagnostic | Measurements held in device memory (max 256) |
+| `sensor.poollab_clock_drift` | diagnostic | Device clock versus Home Assistant, in seconds |
+| `sensor.poollab_battery` | diagnostic | Battery level in percent |
+| `sensor.poollab_lcd_contrast` | diagnostic | Last known contrast level — **disabled by default** |
 
-Meetsensoren worden pas aangemaakt zodra die parameter een keer gemeten is, en blijven
-daarna bestaan. Waarden overleven een herstart van Home Assistant.
+Measurement sensors are created the first time that parameter is measured and persist
+afterwards. Values survive a Home Assistant restart.
 
-### Weten of het apparaat bereikbaar is
+### Knowing whether the device is reachable
 
-De PoolLab staat het grootste deel van de tijd uit, dus een mislukte uitlezing is
-meestal geen storing. **`binary_sensor.poollab_bereikbaar`** laat live zien of Home
-Assistant het apparaat hoort adverteren — handig om te bepalen of het zin heeft om op
-**Nu ophalen** te drukken. De attributen vertellen de rest:
+The PoolLab is switched off most of the time, so a failed read is usually not a fault.
+**`binary_sensor.poollab_reachable`** shows live whether Home Assistant hears the device
+advertising — handy for deciding whether pressing **Fetch now** is worth it. Its attributes
+tell the rest: `received_via` (which adapter or proxy), `rssi`, and `last_read_successful`.
 
-| Attribuut | Betekenis |
+`sensor.poollab_signal_strength` exposes that RSSI as its own value, and
+`sensor.poollab_via_proxy` names the adapter. In a multi-proxy setup that changes over
+time: if reads keep going over a weak route, a proxy closer to the pool is the fix. Signal
+strength is cleared once the device is out of range; the proxy name is kept, because
+knowing where it was last heard stays useful.
+
+`sensor.poollab_clock_drift` shows how far the device clock has wandered. The device
+timestamps its own measurements, so when this grows, press **Set clock**.
+
+### Attributes on each measurement sensor
+
+| Attribute | Meaning |
 |---|---|
-| `ontvangen_via` | Welke adapter of Bluetooth-proxy het apparaat hoort |
-| `signaalsterkte_dbm` | RSSI van de laatste advertentie |
-| `laatste_uitlezing_gelukt` | Of de meest recente uitlezing slaagde |
+| `measured_at` | When the measurement was taken on the device |
+| `status` | `ok`, `under_range` or `over_range`, as reported by the device |
+| `measure_id` | Sequence number of the measurement on the device |
+| `ideal_low` / `ideal_high` | Your target range for this parameter |
+| `ideal_range_status` | `low`, `ok` or `high` |
+| `skipped_reading` | A more recent reading was not used as the value |
+| `skipped_reading_at` | When that skipped reading was taken |
+| `value_is_minimum` | The value is the top of the measuring range; the real value is at least this |
+| `range_min` / `range_max` | What the device can measure for this parameter |
 
-`sensor.poollab_signaalsterkte` geeft diezelfde RSSI als losse waarde, en
-`sensor.poollab_via_proxy` laat zien wélke adapter of proxy het apparaat hoort. In een
-opstelling met meerdere proxy's wisselt dat: blijkt een uitlezing telkens over een
-zwakke route te lopen, dan is een proxy dichter bij het bad de oplossing. De
-signaalsterkte wordt leeggemaakt zodra het apparaat uit bereik is; de proxynaam blijft
-staan, want weten wáár hij het laatst gezien is blijft nuttig.
+The measuring range comes from the official documentation and explains why a reading falls
+outside it: pH, for instance, is only measured between **6.50 and 8.40**, so a failed pH
+test inevitably lands below range.
 
-`sensor.poollab_klokafwijking` toont hoeveel de apparaatklok afwijkt van Home
-Assistant. Loopt dat op, druk dan op **Klok gelijkzetten** — het apparaat stempelt zijn
-metingen namelijk zelf.
+### Out-of-range readings
 
-### Attributen per meetsensor
+The device reports value `0.0` for **both** underrange and overrange — the reading simply
+did not fit its scale, so that number means nothing. Taking it at face value is actively
+wrong: a total alkalinity above 200 ppm would show as `0.0` and be judged "low", the exact
+opposite of reality.
 
-| Attribuut | Betekenis |
-|---|---|
-| `measured_at` | Wanneer de meting op het apparaat is gedaan |
-| `status` | `ok`, `onder meetbereik` of `boven meetbereik`, zoals het apparaat het meldt |
-| `measure_id` | Volgnummer van de meting op het apparaat |
-| `ideal_low` / `ideal_high` | Je streefwaarden voor deze parameter |
-| `ideal_range_status` | `te laag`, `ok` of `te hoog` |
-| `genegeerde_meting` | Er was een recentere meting die niet als waarde is gebruikt |
-| `genegeerde_meting_op` | Wanneer die genegeerde meting is gedaan |
-| `meetbereik_min` / `meetbereik_max` | Wat het apparaat voor deze parameter kán meten |
+- **Underrange** (e.g. measuring without a reagent tablet) is skipped; the last valid
+  reading stays, and `skipped_reading` records what happened.
+- **Overrange** is clamped to the top of the measuring range and flagged with
+  `value_is_minimum`, so it reads as "at least this" and is correctly judged `high`.
 
-Het meetbereik komt uit de officiële documentatie en verklaart waarom een meting
-buiten bereik valt: pH meet het apparaat bijvoorbeeld alleen tussen **6,50 en 8,40**,
-dus een mislukte pH-test belandt onvermijdelijk onder het bereik.
+To get the real number, dilute: 5 ml sample plus 5 ml distilled water, measure again and
+multiply by 2. Dilution does not work for pH.
 
-### Mislukte metingen
+### Measurement order
 
-Meet je zonder reagenstablet, dan ziet de fotometer geen kleuring en rapporteert hij
-`onder meetbereik` met waarde `0.0`. Zo'n meting **overschrijft de sensorwaarde niet**:
-de laatste geldige meting blijft staan, en de attributen `genegeerde_meting` en
-`genegeerde_meting_op` laten zien dat er iets is overgeslagen. Anders zou één
-mislukte meting je pH van 7,2 naar 0,0 laten springen en ook de langetermijn-
-statistiek vervuilen.
+Each parameter needs its **own fresh 10 ml sample and its own ZERO** (taken without
+reagent) before the tablet goes in. The one exception is **total chlorine, which is
+measured straight after free chlorine without emptying the cuvette** — the DPD 3 tablet
+joins the already dissolved DPD 1, and combined chlorine is total minus free. Note that
+free chlorine must be read **within one minute** of the tablet dissolving, or the values
+drift upward.
 
-`boven meetbereik` wordt **wél** als waarde overgenomen — dat is echte informatie
-("hoger dan ik kan meten"), bijvoorbeeld bij een te hoge chloorwaarde.
+### Adjusting target ranges
 
-### Streefwaarden aanpassen
-
-`IDEAL_RANGES` in `const.py` bepaalt de `ideal_*`-attributen. De standaardwaarden zijn
-gangbare richtwaarden voor een privé-buitenbad met chloor:
+`IDEAL_RANGES` in `const.py` drives the `ideal_*` attributes. The defaults are common
+guidance figures for a private chlorine outdoor pool:
 
 ```python
 IDEAL_RANGES = {
-    1:  (1.0, 3.0),      # Totaal chloor (ppm)
-    6:  (2.0, 4.0),      # Broom (ppm)
-    8:  (1.0, 3.0),      # Vrij chloor (ppm)
+    1:  (1.0, 3.0),      # Total chlorine (ppm)
+    6:  (2.0, 4.0),      # Bromine (ppm)
+    8:  (1.0, 3.0),      # Free chlorine (ppm)
     9:  (7.0, 7.4),      # pH
-    10: (80.0, 120.0),   # Totale alkaliniteit (ppm)
-    11: (30.0, 50.0),    # Cyanuurzuur (ppm)
-    35: (200.0, 400.0),  # Totale hardheid (ppm)
+    10: (80.0, 120.0),   # Total alkalinity (ppm)
+    11: (30.0, 50.0),    # Cyanuric acid (ppm)
+    35: (200.0, 400.0),  # Total hardness (ppm)
 }
 ```
 
-Deze horen niet bij het BLE-protocol; pas ze aan op je eigen bad (zoutwater, broom, spa).
+These are not part of the BLE protocol; adapt them to your pool (salt water, bromine, spa).
 
-### Automation-voorbeelden
+### Automation examples
 
-Waarschuwing als de pH buiten je streefwaarden ligt, met de mislukte metingen eruit:
+Alert when pH leaves the target range, filtering out failed measurements:
 
 ```yaml
 automation:
-  - alias: "Zwembad - pH buiten streefwaarden"
+  - alias: "Pool - pH out of range"
     triggers:
       - trigger: state
         entity_id: sensor.poollab_ph
@@ -211,35 +213,43 @@ automation:
         value_template: >
           {{ state_attr('sensor.poollab_ph', 'ideal_range_status') != 'ok' }}
     actions:
-      - action: notify.mobile_app_telefoon
+      - action: notify.mobile_app_phone
         data:
-          title: "Zwembad pH"
+          title: "Pool pH"
           message: >
             pH is {{ states('sensor.poollab_ph') }}
             ({{ state_attr('sensor.poollab_ph', 'ideal_range_status') }}).
 ```
 
-Herinnering als er al een week niet gemeten is:
+Remind yourself when no test has been done for a week:
 
 ```yaml
 automation:
-  - alias: "Zwembad - al een week geen watertest"
+  - alias: "Pool - no water test for a week"
     triggers:
       - trigger: template
         value_template: >
-          {{ now() - states('sensor.poollab_laatste_meting') | as_datetime
+          {{ now() - states('sensor.poollab_last_measurement') | as_datetime
              > timedelta(days=7) }}
     actions:
-      - action: notify.mobile_app_telefoon
+      - action: notify.mobile_app_phone
         data:
-          message: "Al een week geen zwemwater getest."
+          message: "No pool water test for a week."
 ```
 
 ---
 
-## Problemen oplossen
+## Saving battery
 
-Zet eerst uitgebreide logging aan:
+After a read the device stays on for another ~300 seconds before switching itself off.
+Press **Sleep** and it goes into deep sleep immediately — under 20 µA, typically 8.5 µA.
+That is the same state as holding the power button, and the internal clock keeps running.
+
+---
+
+## Troubleshooting
+
+Enable verbose logging first:
 
 ```yaml
 logger:
@@ -247,43 +257,43 @@ logger:
     custom_components.poollab_local: debug
 ```
 
-Kijk eerst naar `binary_sensor.poollab_bereikbaar`: staat die uit, dan ziet Home
-Assistant het apparaat simpelweg niet en heeft uitlezen geen zin.
+Check `binary_sensor.poollab_reachable` before anything else: if it is off, Home Assistant
+simply cannot see the device and reading is pointless.
 
-| Symptoom | Oorzaak en oplossing |
+| Symptom | Cause and fix |
 |---|---|
-| `was not seen by any Bluetooth adapter/proxy` | Het apparaat staat uit of is buiten bereik. Zet het aan; het gaat na ~300 s vanzelf weer uit. In het debug-log herken je dit aan een uitlezing die in **0,000 seconden** faalt: er is dan nog geen enkele Bluetooth-actie geweest. |
-| `Timed out talking to PoolLab` | De verbinding lukte, maar het apparaat antwoordde niet — in het log een uitlezing van **~21 seconden**. Meestal bezet de **LabCOM-app** de enige BLE-verbinding, of het apparaat staat in een meetstand of menu. Sluit de app, ga terug naar het hoofdscherm en probeer opnieuw. |
-| Geen meetsensoren, alleen batterij | Het apparaatgeheugen is leeg. Doe een meting en druk op **Nu ophalen**. |
-| Waarde `0.0` bij pH | Kijk naar `status`: bij `onder meetbereik` was de meting zelf ongeldig (geen reagenstablet). |
-| `measured_at` klopt niet | De apparaatklok is verlopen. Druk op **Klok gelijkzetten**. |
+| `was not seen by any Bluetooth adapter/proxy` | The device is off or out of range. Switch it on; it powers down again after ~300 s. In the debug log this shows as a read failing in **0.000 seconds** — no Bluetooth activity happened at all. |
+| `Timed out talking to PoolLab` | The connection succeeded but the device did not answer — a read of roughly **21 seconds** in the log. Usually the **LabCOM app** holds the only BLE connection, or the device sits in a measurement screen or menu. Close the app, return to the home screen and retry. |
+| No measurement sensors, only battery | Device memory is empty. Take a measurement and press **Fetch now**. |
+| A value of `0.0` | Check `status`: `under_range` means the measurement itself was invalid (no reagent tablet). |
+| `measured_at` is wrong | The device clock has drifted. Press **Set clock**. |
 
 ---
 
-## Hoe het werkt
+## How it works
 
-Het apparaat biedt een eigen GATT-service (`PoolLabSvc`,
-`A7EE04A9-507B-4910-A528-B619D5501924`) met drie characteristics:
+The device exposes its own GATT service (`PoolLabSvc`,
+`A7EE04A9-507B-4910-A528-B619D5501924`) with three characteristics:
 
-| Characteristic | UUID | Rol |
+| Characteristic | UUID | Role |
 |---|---|---|
-| `CommandMOSI` | `91BFA536-…` | commando schrijven (≤128 bytes) |
-| `CommandMISO` | `2FF18B59-…` | antwoord lezen (altijd 250 bytes) |
-| `MISO_Signal` | `C2296C06-…` | notificatie: "antwoord staat klaar" |
+| `CommandMOSI` | `91BFA536-…` | write command (≤128 bytes) |
+| `CommandMISO` | `2FF18B59-…` | read response (always 250 bytes) |
+| `MISO_Signal` | `C2296C06-…` | notify: "response ready" |
 
-Eén uitwisseling verloopt zo: verbinden zonder pairing, notificaties inschakelen op
-`MISO_Signal`, het commando schrijven naar `CommandMOSI` (preamble `0xAB` + 16-bits
-commando-ID + parameters), wachten op de notificatie, en het antwoord lezen van
-`CommandMISO`. Alle meerbyte-getallen zijn little-endian.
+One exchange goes like this: connect without pairing, enable notifications on
+`MISO_Signal`, write the command to `CommandMOSI` (preamble `0xAB` + 16-bit command ID +
+parameters), wait for the notification, then read the answer from `CommandMISO`. All
+multi-byte values are little-endian.
 
-De integratie stuurt `GET_INFO` (batterij, aantal opgeslagen metingen, klok) en
-vervolgens `GET_MEASURES` voor de flashcellen. Het geheugen bestaat uit 16 cellen van
-16 metingen, per helft van 8 uit te lezen; elk record is 16 bytes met volgnummer,
-parametertype, status, tijdstempel en een IEEE-754 float als waarde.
+The integration sends `GET_INFO` (battery, stored measurement count, clock) and then
+`GET_MEASURES` across the flash cells. Memory holds 16 cells of 16 measurements, read half
+(8) at a time; each record is 16 bytes carrying a sequence number, parameter type, status,
+timestamp and an IEEE-754 float.
 
-Alleen lezen plus `SET_TIME` zijn ontsloten. De overige schrijfcommando's (contrast,
-ppm/mg-L omschakelen, geheugen wissen, herstarten, slaapstand) staan wel in `const.py`
-maar zijn bewust niet als knop of service beschikbaar.
+Every command in the API is exposed. Note that `RESET_DEVICE` and `SLEEP_DEVICE` produce
+**no response** — the device kills its radio immediately — so they bypass the normal
+command routine that waits for a notification.
 
 ---
 
@@ -293,16 +303,24 @@ maar zijn bewust niet als knop of service beschikbaar.
 python3 tests/test_parsers.py
 ```
 
-Bouwt synthetische `GET_INFO`- en `GET_MEASURES`-frames byte voor byte volgens de
-specificatie en controleert of de parser ze correct ontleedt, inclusief randgevallen
-als een onzinnige apparaatklok en niet-eindige meetwaarden. Draait zonder hardware en
-zonder Home Assistant.
+Builds synthetic `GET_INFO` and `GET_MEASURES` frames byte by byte per the specification
+and checks the parser decodes them correctly, including edge cases such as an implausible
+device clock, non-finite values and out-of-range readings. Runs without hardware and
+without Home Assistant.
 
 ---
 
-## Licentie en dank
+## Limitations
 
-Zie [LICENSE](LICENSE). Met dank aan
-[mf76130](https://github.com/mf76130/ha-poollab-local) voor het oorspronkelijke werk en
-aan [kenavn](https://github.com/kenavn/esphome-poollab) voor de leesbare transcriptie
-van de protocoldocumentatie.
+- The LabCOM app cannot connect while Home Assistant is reading.
+- **Firmware cannot be updated over Bluetooth.** The API has no command for it; that goes
+  exclusively through the LabCOM app, which uses a separate bootloader.
+
+---
+
+## License and credits
+
+See [LICENSE](LICENSE). Thanks to
+[mf76130](https://github.com/mf76130/ha-poollab-local) for the original work, and to
+[kenavn](https://github.com/kenavn/esphome-poollab) for a readable transcription of the
+protocol documentation.

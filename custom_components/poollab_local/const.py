@@ -44,7 +44,7 @@ DEFAULT_TIMEOUT = 20  # seconds; BLE connect + command round trip can be slow
 # connection at a time and is typically used a few times a week at most,
 # so polling on a fixed schedule would just be needless Bluetooth traffic
 # and a source of connection conflicts with the LabCom app. Use the
-# "Nu ophalen" button entity right after taking a measurement instead.
+# "Fetch now" button entity right after taking a measurement instead.
 UPDATE_INTERVAL_SECONDS: int | None = None
 
 # --- Measurement status codes (per flash_measurement_result.measure_status) ---
@@ -54,27 +54,27 @@ MEASURE_STATUS_OVERRANGE = 2
 
 MEASURE_STATUS_NAMES = {
     MEASURE_STATUS_OK: "ok",
-    MEASURE_STATUS_UNDERRANGE: "onder meetbereik",
-    MEASURE_STATUS_OVERRANGE: "boven meetbereik",
+    MEASURE_STATUS_UNDERRANGE: "under_range",
+    MEASURE_STATUS_OVERRANGE: "over_range",
 }
 
-IDEAL_RANGE_LOW = "te laag"
-IDEAL_RANGE_HIGH = "te hoog"
+IDEAL_RANGE_LOW = "low"
+IDEAL_RANGE_HIGH = "high"
 IDEAL_RANGE_OK = "ok"
 
-# --- Streefwaarden (ideale range voor gezond zwemwater) ---
-# Deze horen NIET bij het officiele BLE-protocol - het apparaat kent alleen
-# zijn eigen technische meetbereik (zie MEASUREMENT_TYPES hieronder).
-# Onderstaande waarden zijn gangbare richtwaarden voor een prive-buitenbad
-# met chloor; pas ze aan op de eigen situatie (zoutbad, bromide, spa).
+# --- Target ranges for healthy pool water ---
+# These are NOT part of the BLE protocol - the device only knows its own
+# technical measuring range (see MEASUREMENT_RANGES below). The values here are
+# common guidance figures for a private chlorine outdoor pool; adjust them to
+# your own setup (salt water, bromine, spa).
 IDEAL_RANGES: dict[int, tuple[float, float]] = {
-    1: (1.0, 3.0),        # Totaal chloor (ppm)
-    6: (2.0, 4.0),        # Broom (ppm)
-    8: (1.0, 3.0),        # Vrij chloor (ppm)
+    1: (1.0, 3.0),        # Total chlorine (ppm)
+    6: (2.0, 4.0),        # Bromine (ppm)
+    8: (1.0, 3.0),        # Free chlorine (ppm)
     9: (7.0, 7.4),        # pH
-    10: (80.0, 120.0),    # Totale alkaliniteit (ppm)
-    11: (30.0, 50.0),     # Cyanuurzuur / stabilisator (ppm)
-    35: (200.0, 400.0),   # Totale hardheid (ppm)
+    10: (80.0, 120.0),    # Total alkalinity (ppm)
+    11: (30.0, 50.0),     # Cyanuric acid / stabiliser (ppm)
+    35: (200.0, 400.0),   # Total hardness (ppm)
 }
 
 # --- Measurement scenario types: type_id -> (name, unit, decimals) ---
@@ -132,21 +132,20 @@ MEASUREMENT_TYPES: dict[int, tuple[str, str, int]] = {
     49: ("Ozone i.p.o. Chlorine (liquid)", "ppm", 2),
 }
 
-# --- Technisch meetbereik van het apparaat (type_id -> (min, max)) ---
-# Basis: de officiele API-documentatie, tabel "Measurement Result Types"
-# (pp. 21-22). Dit is wat het apparaat kan meten; ligt een meting hierbuiten
-# dan rapporteert het zelf underrange of overrange. Niet te verwarren met
-# IDEAL_RANGES, dat zijn de streefwaarden voor het water.
+# --- Technical measuring range of the device (type_id -> (min, max)) ---
+# Based on the official API documentation, table "Measurement Result Types"
+# (pp. 21-22). This is what the device can measure; a reading outside it makes
+# the device report underrange or overrange itself. Not to be confused with
+# IDEAL_RANGES, which are target values for the water.
 #
-# LET OP: op twee punten wijkt de API-doc af van de gebruikershandleiding
-# (poollab_manual_gb-fr-e-d-i.pdf), die per test een schaalbalk met het bereik
-# toont. De handleiding is hier leidend, want die beschrijft wat het apparaat
-# daadwerkelijk meet:
-#   - Totaal chloor: API-doc 0,60 vs handleiding 0-8,00 (p.32). 0,60 kan niet
-#     kloppen - een zwembad voert 1-3 ppm, en vrij chloor staat op 0-6.
-#   - Totale alkaliniteit: API-doc 300 vs handleiding 0-200 (p.22).
+# NOTE: on two points the API doc contradicts the user manual
+# (poollab_manual_gb-fr-e-d-i.pdf), which prints a scale bar per test. The
+# manual wins here, because it describes what the device actually measures:
+#   - Total chlorine: API doc says 0.60, manual says 0-8.00 (p.32). 0.60 cannot
+#     be right - a pool runs 1-3 ppm, and free chlorine is listed as 0-6.
+#   - Total alkalinity: API doc says 300, manual says 0-200 (p.22).
 MEASUREMENT_RANGES: dict[int, tuple[float, float]] = {
-    1: (0.00, 8.00),   # handleiding p.32: 0-8,00 (API-doc zegt 0,60 - typefout)
+    1: (0.00, 8.00),   # manual p.32: 0-8.00 (API doc says 0.60 - typo)
     2: (0.00, 4.00),
     3: (0.00, 11.40),
     5: (0.00, 30.00),
@@ -154,7 +153,7 @@ MEASUREMENT_RANGES: dict[int, tuple[float, float]] = {
     7: (0.00, 2.90),
     8: (0.00, 6.00),
     9: (6.50, 8.40),
-    10: (0.00, 200.00),  # handleiding p.22: 0-200 (API-doc zegt 300)
+    10: (0.00, 200.00),  # manual p.22: 0-200 (API doc says 300)
     11: (0.00, 160.00),
     12: (0.00, 200.00),
     13: (0.00, 500.00),
@@ -196,9 +195,9 @@ MEASUREMENT_RANGES: dict[int, tuple[float, float]] = {
     49: (0.00, 4.07),
 }
 
-# --- OEM-varianten (active_id uit GET_INFO) ---
-# Alle varianten delen dezelfde BLE-API; ze verschillen in welke tests
-# beschikbaar zijn. Bron: API-documentatie, "OEM Variants" (p. 23).
+# --- OEM variants (active_id from GET_INFO) ---
+# All variants share the same BLE API; they differ in which tests are
+# available. Source: API documentation, "OEM Variants" (p. 23).
 OEM_VARIANTS: dict[int, str] = {
     0: "INTERNAL",
     1: "PoolLab 1.0",

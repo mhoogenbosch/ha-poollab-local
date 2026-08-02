@@ -44,7 +44,7 @@ class PoolLabRefreshButton(CoordinatorEntity[PoolLabCoordinator], ButtonEntity):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Nu ophalen"
+    _attr_translation_key = "fetch_now"
     _attr_icon = "mdi:bluetooth-transfer"
     _attr_device_class = ButtonDeviceClass.UPDATE
     _attr_entity_registry_enabled_default = True
@@ -86,7 +86,7 @@ class PoolLabSetTimeButton(PoolLabRefreshButton):
     lands straight in the `measured_at` attribute of each sensor.
     """
 
-    _attr_name = "Klok gelijkzetten"
+    _attr_translation_key = "set_clock"
     _attr_icon = "mdi:clock-check-outline"
     _attr_device_class = None
     _attr_entity_category = EntityCategory.CONFIG
@@ -107,7 +107,7 @@ class PoolLabSleepButton(PoolLabRefreshButton):
     staying awake for its ~300 second auto-off timer.
     """
 
-    _attr_name = "Slaapstand"
+    _attr_translation_key = "sleep"
     _attr_icon = "mdi:power-sleep"
     _attr_device_class = None
     _attr_entity_category = EntityCategory.CONFIG
@@ -123,7 +123,7 @@ class PoolLabSleepButton(PoolLabRefreshButton):
 class PoolLabRestartButton(PoolLabRefreshButton):
     """Restarts the device."""
 
-    _attr_name = "Herstarten"
+    _attr_translation_key = "restart"
     _attr_icon = "mdi:restart"
     _attr_device_class = ButtonDeviceClass.RESTART
     _attr_entity_category = EntityCategory.CONFIG
@@ -139,7 +139,7 @@ class PoolLabRestartButton(PoolLabRefreshButton):
 class PoolLabContrastUpButton(PoolLabRefreshButton):
     """Raises the LCD contrast one level (device range 18-38)."""
 
-    _attr_name = "Contrast omhoog"
+    _attr_translation_key = "contrast_up"
     _attr_icon = "mdi:brightness-7"
     _attr_device_class = None
     _attr_entity_category = EntityCategory.CONFIG
@@ -155,7 +155,7 @@ class PoolLabContrastUpButton(PoolLabRefreshButton):
 class PoolLabContrastDownButton(PoolLabRefreshButton):
     """Lowers the LCD contrast one level (device range 18-38)."""
 
-    _attr_name = "Contrast omlaag"
+    _attr_translation_key = "contrast_down"
     _attr_icon = "mdi:brightness-5"
     _attr_device_class = None
     _attr_entity_category = EntityCategory.CONFIG
@@ -175,7 +175,7 @@ class PoolLabEraseMemoryButton(PoolLabRefreshButton):
     measurement history, which is the only copy when you don't use the cloud.
     """
 
-    _attr_name = "Geheugen wissen"
+    _attr_translation_key = "erase_memory"
     _attr_icon = "mdi:database-remove"
     _attr_device_class = None
     _attr_entity_category = EntityCategory.CONFIG

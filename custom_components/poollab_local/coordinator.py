@@ -179,11 +179,11 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_sleep_device(self) -> None:
         """Put the device into deep sleep (same as holding the power button)."""
-        await self._fire_and_forget(CMD_SLEEP_DEVICE, "slaapstand")
+        await self._fire_and_forget(CMD_SLEEP_DEVICE, "sleep")
 
     async def async_reset_device(self) -> None:
         """Restart the device."""
-        await self._fire_and_forget(CMD_RESET_DEVICE, "herstart")
+        await self._fire_and_forget(CMD_RESET_DEVICE, "restart")
 
     async def async_reset_measures(self) -> None:
         """Erase every stored measurement on the device. Irreversible."""
@@ -213,7 +213,7 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_step_contrast(self, increase: bool) -> int | None:
         """Nudge the LCD contrast one level (range 18-38); returns the new level."""
         command = CMD_SET_CONTRAST_PLUS if increase else CMD_SET_CONTRAST_MINUS
-        label = "contrast omhoog" if increase else "contrast omlaag"
+        label = "contrast up" if increase else "contrast down"
         async with self._lock:
             client: BleakClientWithServiceCache | None = None
             try:
@@ -223,10 +223,10 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     return None
                 if raw[1] == RESULT_ERR:
                     # Already at the end of the range - not a failure worth raising.
-                    _LOGGER.info("PoolLab: %s geweigerd (grens bereikt)", label)
+                    _LOGGER.info("PoolLab: %s refused (already at the limit)", label)
                     return None
                 level = struct.unpack_from("<H", raw, 2)[0]
-                _LOGGER.info("PoolLab: contrast is nu %s", level)
+                _LOGGER.info("PoolLab: contrast is now %s", level)
                 self._contrast = level
                 return level
             except TimeoutError as err:
@@ -253,7 +253,7 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     bytes([1 if mg_per_litre else 0]),
                 )
                 _LOGGER.info(
-                    "PoolLab: eenheid gezet op %s", "mg/L" if mg_per_litre else "ppm"
+                    "PoolLab: unit mode set to %s", "mg/L" if mg_per_litre else "ppm"
                 )
             except TimeoutError as err:
                 raise UpdateFailed(f"Timed out setting unit mode: {err}") from err

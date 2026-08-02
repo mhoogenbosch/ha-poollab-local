@@ -1,232 +1,199 @@
 # Changelog
 
-Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
+All notable changes to this fork are documented here.
 
-Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
-en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
+track upstream with an `-mh.N` suffix for fork releases.
+
+## [2.0.0-mh.1] - 2026-08-02
+
+The integration is now bilingual (English/Dutch) and ready to share. **Breaking:** entity
+names and several attribute keys changed.
+
+### Changed
+- **Entity names now come from the translation files** instead of being hardcoded, via
+  `translation_key`. English and Dutch are included; other languages fall back to English.
+  Entity IDs are unaffected — only display names change.
+- **Attribute keys and values are English**, so automations are portable:
+  - `genegeerde_meting` → `skipped_reading`, `genegeerde_meting_op` → `skipped_reading_at`
+  - `waarde_is_ondergrens` → `value_is_minimum`
+  - `meetbereik_min` / `meetbereik_max` → `range_min` / `range_max`
+  - `ontvangen_via` → `received_via`, `signaalsterkte_dbm` → `rssi`,
+    `in_bereik` → `in_range`, `adapter_id` → `source_id`,
+    `laatste_uitlezing_gelukt` → `last_read_successful`, `geheugen_vol` → `memory_full`
+  - `status`: `onder meetbereik` / `boven meetbereik` → `under_range` / `over_range`
+  - `ideal_range_status`: `te laag` / `te hoog` → `low` / `high`
+- Documentation, code comments and log messages translated to English.
 
 ## [1.1.1-mh.1] - 2026-08-02
 
 ### Fixed
-- **Home Assistant kon 0,01 afwijken van het apparaatdisplay.** De meetwaarde werd bij
-  het uitlezen al afgerond op het aantal decimalen uit de specificatie. Stuurt het
-  apparaat 0,026, dan werd dat `0.03` terwijl het display `0.02` toont. Dat kostte
-  bovendien onnodig precisie in de langetermijnstatistiek.
-
-  De onbewerkte apparaatwaarde wordt nu opgeslagen; het aantal decimalen is verplaatst
-  naar **`suggested_display_precision`** op de entiteit, zodat Home Assistant zelf de
-  weergave verzorgt. Dat is ook de gangbare werkwijze: de state houdt de volle precisie,
-  de presentatie is een weergavekeuze.
+- **Home Assistant could differ from the device display by 0.01.** Readings were rounded
+  to the specified number of decimals while parsing, so a device value of 0.026 became
+  `0.03` where the display shows `0.02` — the device truncates where we rounded. It also
+  cost precision in long-term statistics. The raw device value is now stored and the
+  decimal count moved to `suggested_display_precision` on the entity, so Home Assistant
+  handles presentation. State keeps full precision; formatting is a display choice.
 
 ## [1.1.0-mh.1] - 2026-08-01
 
 ### Fixed
-- **Een overrange-meting werd als `0.0` overgenomen en dus als "te laag" beoordeeld
-  — het tegenovergestelde van de werkelijkheid.** Op hardware bleek dat het apparaat
-  bij overrange gewoon waarde `0.0` meldt: de meting paste simpelweg niet op de
-  schaal. De aanname in 1.0.0 dat overrange een bruikbare waarde oplevert was dus
-  fout. Een totale alkaliniteit boven 200 ppm verscheen daardoor als `0.0` met het
-  oordeel `te laag`, terwijl hij juist te hoog was — een automation die daarop stuurt
-  zou precies de verkeerde kant op corrigeren.
+- **An overrange reading was taken as `0.0` and therefore judged "too low" — the exact
+  opposite of reality.** On hardware the device turns out to report `0.0` on overrange as
+  well: the reading simply did not fit its scale. A total alkalinity above 200 ppm showed
+  as `0.0` with verdict `low`, so an automation acting on it would correct the wrong way.
 
-  De waarde wordt nu **geklemd op de bovengrens van het meetbereik**, zodat hij leest
-  als "minstens dit". Het nieuwe attribuut **`waarde_is_ondergrens`** markeert dat.
-  Is voor dat parametertype geen meetbereik bekend, dan kan er niet geklemd worden en
-  gaat de meting naar de genegeerde metingen in plaats van als `0.0` te verschijnen.
-- Het attribuut `genegeerde_meting` noemt nu de werkelijke reden (`onder meetbereik`
-  of `boven meetbereik`) in plaats van altijd "onder meetbereik".
+  The value is now **clamped to the top of the measuring range**, reading as "at least
+  this", flagged by the new `value_is_minimum` attribute. When no range is known for that
+  parameter type, the reading is skipped rather than shown as `0.0`.
+- `skipped_reading` now names the actual reason instead of always reporting underrange.
 
 ### Added
-- Parsertests voor het klemmen bij overrange en voor het ongemoeid laten van een
-  normale meting.
+- Parser tests for overrange clamping and for leaving a normal reading untouched.
 
 ## [1.0.1-mh.1] - 2026-08-01
 
 ### Fixed
-- **Twee meetbereiken gecorrigeerd.** De API-documentatie en de
-  gebruikershandleiding spreken elkaar tegen; de handleiding toont per test een
-  schaalbalk met het werkelijke bereik en is hier leidend.
-  - **Totaal chloor**: 0–0,60 → **0–8,00 ppm** (handleiding p. 32). De 0,60 uit
-    de API-doc kan niet kloppen — een zwembad voert 1–3 ppm en vrij chloor
-    staat op 0–6.
-  - **Totale alkaliniteit**: 0–300 → **0–200 ppm** (handleiding p. 22). Dit
-    verschuift de grens waarboven het apparaat `OR` (overrange) meldt.
+- **Two measuring ranges corrected.** The API documentation and the user manual
+  contradict each other; the manual prints a scale bar per test and wins here.
+  - **Total chlorine**: 0–0.60 → **0–8.00 ppm** (manual p. 32). The 0.60 cannot be right:
+    a pool runs 1–3 ppm and free chlorine is listed as 0–6 in the same table.
+  - **Total alkalinity**: 0–300 → **0–200 ppm** (manual p. 22). This shifts the threshold
+    above which the device reports `OR`.
 
 ## [1.0.0-mh.1] - 2026-08-01
 
-Alle commando's uit de officiële BLE-API zijn nu ontsloten. Daarmee is de integratie
-functioneel compleet: er zit niets meer in het protocol dat ongebruikt blijft.
+Every command in the official BLE API is now exposed; nothing in the protocol goes unused.
 
 ### Added
-- **Knop "Slaapstand"** (`SLEEP_DEVICE`, `0x04`): zet het apparaat direct in diepe
-  slaap, hetzelfde als de aan/uitknop ingedrukt houden. Scheelt batterij — slapend
-  trekt het apparaat onder 20 µA (typisch 8,5 µA) in plaats van wakker te blijven tot
-  de automatische uitschakeling na ~300 s.
-- **Knop "Herstarten"** (`RESET_DEVICE`, `0x03`).
-- **Knoppen "Contrast omhoog/omlaag"** (`0x08`/`0x09`): stapt het LCD-contrast één
-  niveau, binnen het bereik 18–38. Staat het al op de grens, dan meldt het apparaat dat
-  met resultaatcode `0x02`; dat wordt als normale uitkomst gelogd, niet als fout.
-- **Sensor "LCD-contrast"** met het laatst bekende niveau. Standaard uitgeschakeld: het
-  protocol kent geen "lees contrast"-commando, dus de waarde is pas bekend ná een stap.
-- **Keuzelijst "Eenheid"** (`GET/SET_PPM_MGL`, `0x0A`/`0x0B`): schakelt het apparaat
-  tussen ppm en mg/L. De huidige stand wordt bij elke uitlezing meegelezen.
-- **Knop "Geheugen wissen"** (`RESET_MEASURES`, `0x06`). **Standaard uitgeschakeld**,
-  want onomkeerbaar: het wist de volledige meetgeschiedenis van het apparaat, en zonder
-  cloud is dat de enige kopie.
+- **Sleep** (`SLEEP_DEVICE`, `0x04`): deep sleep immediately instead of waiting out the
+  ~300 s auto-off. Draws under 20 µA, typically 8.5 µA.
+- **Restart** (`RESET_DEVICE`, `0x03`).
+- **Contrast up/down** (`0x08`/`0x09`): one LCD level within range 18–38. At the limit the
+  device answers with result code `0x02`, treated as a normal outcome rather than an error.
+- **LCD contrast sensor** with the last known level. Disabled by default: the protocol has
+  no "read contrast" command, so the value is only known after a step.
+- **Unit select** (`GET/SET_PPM_MGL`, `0x0A`/`0x0B`) switching between ppm and mg/L; the
+  current setting is read during each poll.
+- **Erase memory** (`RESET_MEASURES`, `0x06`). **Disabled by default** — irreversible, and
+  without the cloud the device memory is the only copy.
 
 ### Fixed
-- `RESET_DEVICE` en `SLEEP_DEVICE` geven per definitie **geen antwoord** — het apparaat
-  schakelt zijn radio onmiddellijk uit. Ze gaan daarom niet door de normale
-  commandoroutine, die op een notificatie wacht en dus altijd in een timeout zou lopen.
-  De schrijfactie zelf mag ook falen; de documentatie noemt dat platformafhankelijk en
-  verwacht gedrag, dus dat wordt gelogd op debugniveau in plaats van als fout gemeld.
+- `RESET_DEVICE` and `SLEEP_DEVICE` produce **no response**; the device kills its radio at
+  once. They bypass the normal command routine, which waits for a notification and would
+  always time out. A failing write is documented as platform-dependent and expected, so it
+  is logged at debug level rather than raised.
 
 ## [0.9.0-mh.1] - 2026-08-01
 
-De officiële API-documentatie ([BLE.pdf](https://poollab.org/static/api/BLE.pdf), v2)
-is deze keer volledig uitgelezen in plaats van geleund op een transcriptie. Daaruit
-kwamen een paar gegevens die het apparaat al meestuurde maar die nergens zichtbaar
-waren.
+The official API documentation was read in full rather than relying on a transcription,
+which surfaced data the device already sent but that was never shown.
 
 ### Added
-- **`sensor.poollab_via_proxy`**: welke Bluetooth-adapter of -proxy het apparaat hoort.
-  In een opstelling met meerdere proxy's wisselt dat, en een uitlezing die telkens over
-  een zwakke route loopt verklaart timeouts. Attributen: `in_bereik`,
-  `signaalsterkte_dbm` en `adapter_id`. De naam blijft staan als het apparaat uit gaat.
-- **`sensor.poollab_opgeslagen_metingen`**: `result_count` uit `GET_INFO`, met attributen
-  `maximum` (256 = 16 flashcellen × 16) en `geheugen_vol`.
-- **`sensor.poollab_klokafwijking`**: verschil tussen de apparaatklok en Home Assistant
-  in seconden. Het apparaat stempelt zijn metingen zelf, dus dit vertelt wanneer
-  "Klok gelijkzetten" nodig is.
-- **Attributen `meetbereik_min` / `meetbereik_max`** per meetsensor, uit de officiële
-  tabel "Measurement Result Types" (pp. 21–22). Dit maakt inzichtelijk waarom een meting
-  buiten bereik valt: pH meet het apparaat alleen tussen 6,50 en 8,40.
-- **OEM-variant herkend** via `active_id` uit `GET_INFO` (0=INTERNAL, 1=PoolLab 1.0,
-  2=9-in-1 Multitest, 3=ISOLab 1.0, 4=Aquaviva, 5=FinWell Pro). Wordt als model in het
-  apparaatregister gezet; alle varianten delen dezelfde BLE-API.
+- **`sensor.poollab_via_proxy`**: which Bluetooth adapter or proxy hears the device. In a
+  multi-proxy setup this changes, and a read that keeps taking a weak route explains
+  timeouts. Attributes: `in_range`, `rssi`, `source_id`.
+- **`sensor.poollab_stored_measurements`**: `result_count` from `GET_INFO`, with
+  `maximum` (256 = 16 flash cells × 16) and `memory_full`.
+- **`sensor.poollab_clock_drift`**: device clock versus Home Assistant in seconds. The
+  device timestamps its own measurements, so this shows when **Set clock** is due.
+- **`range_min` / `range_max` attributes** per measurement sensor, from the official table
+  "Measurement Result Types" (pp. 21–22). This explains why a reading falls out of range:
+  pH is only measured between 6.50 and 8.40.
+- **OEM variant** recognised from `active_id` (0=INTERNAL, 1=PoolLab 1.0,
+  2=9-in-1 Multitest, 3=ISOLab 1.0, 4=Aquaviva, 5=FinWell Pro), set as the device model.
 
 ### Changed
-- `device_info` en het opzoeken van de proxynaam zijn uitgefactoreerd naar gedeelde
-  helpers; die logica stond in drie klassen gekopieerd.
+- `device_info` and the proxy-name lookup extracted into shared helpers; that logic was
+  duplicated across three classes.
 
 ## [0.8.0-mh.1] - 2026-08-01
 
 ### Changed
-- **Mislukte metingen overschrijven de sensorwaarde niet meer.** Meet je zonder
-  reagenstablet, dan rapporteert de fotometer `underrange` met waarde `0.0`. Die
-  liet de sensor eerder van bijvoorbeeld pH 7,2 naar 0,0 springen, wat ook de
-  langetermijnstatistiek vervuilt. Zulke metingen worden nu overgeslagen bij het
-  bepalen van de waarde; de laatste geldige meting blijft staan. **Overrange
-  blijft wél gewoon de waarde**, want "hoger dan ik kan meten" is echte,
-  actiegevende informatie — bijvoorbeeld bij chloor.
-- Is er een genegeerde meting die recenter is dan de getoonde waarde, dan melden
-  de attributen `genegeerde_meting` en `genegeerde_meting_op` dat, zodat een
-  mislukte meting niet stilletjes verdwijnt.
-- Wordt een parameter uitsluitend als underrange gemeten, dan krijgt hij alsnog
-  een sensor (zonder waarde), zodat zichtbaar is dát er gemeten is.
+- **Failed measurements no longer overwrite the sensor value.** Measuring without a
+  reagent tablet makes the photometer report underrange with value `0.0`, which used to
+  drag the sensor from e.g. pH 7.2 down to 0.0 and pollute long-term statistics. Such
+  readings are now skipped; the last valid measurement stays. Attributes `skipped_reading`
+  and `skipped_reading_at` keep it visible.
+- A parameter only ever measured as underrange still gets a sensor (without a value), so
+  it is visible that it *was* measured.
 
 ### Added
-- **Eigen integratielogo.** De integratie toonde "Icon not available" in
-  Instellingen → Apparaten en diensten. Sinds Home Assistant 2026.3 kan een
-  custom integration zijn merkafbeeldingen zelf meeleveren via de
+- **Own integration logo.** The integration showed "Icon not available" under Settings →
+  Devices & Services. Since Home Assistant 2026.3 a custom integration can ship its own
+  brand images via the
   [brands proxy API](https://developers.home-assistant.io/blog/2026/02/24/brands-proxy-api/):
-  `brand/icon.png` (256×256) en `brand/icon@2x.png` (512×512), zonder wijziging
-  in `manifest.json`. Een pull request naar `home-assistant/brands` is daarvoor
-  niet meer nodig — die repository sluit PR's voor `custom_integrations/*`
-  inmiddels automatisch.
-- Iconen voor alle entiteiten: pH krijgt `mdi:ph`, overige parameters
-  `mdi:test-tube`, en de bereikbaarheidssensor wisselt tussen
-  `mdi:bluetooth-connect` en `mdi:bluetooth-off`.
-- Parsertest voor het behoud van de underrange-status.
+  `brand/icon.png` (256×256) and `brand/icon@2x.png` (512×512), no manifest change needed.
+  A pull request to `home-assistant/brands` is no longer the route — that repository
+  auto-closes PRs for `custom_integrations/*`.
+- Icons for all entities: `mdi:ph` for pH, `mdi:test-tube` for other parameters, and the
+  reachability sensor toggles between `mdi:bluetooth-connect` and `mdi:bluetooth-off`.
 
 ## [0.7.0-mh.1] - 2026-08-01
 
-Diagnostiek, zodat je niet meer in het logbestand hoeft te duiken om te weten of het
-apparaat überhaupt bereikbaar is.
+Diagnostics, so the log file is no longer needed to tell whether the device is reachable.
 
 ### Added
-- **`binary_sensor.poollab_bereikbaar`** (device class `connectivity`): laat live zien
-  of Home Assistant de PoolLab hoort adverteren. Bewust géén `CoordinatorEntity` — dit
-  volgt de actuele Bluetooth-ontvangst, niet de uitkomst van de laatste uitlezing.
-  Attributen: `ontvangen_via` (welke adapter of proxy), `signaalsterkte_dbm` en
-  `laatste_uitlezing_gelukt`.
-- **`sensor.poollab_signaalsterkte`**: RSSI van de laatste advertentie in dBm, met
-  `ontvangen_via` als attribuut. Handig om te bepalen of er een proxy dichter bij het
-  bad nodig is. Wordt leeggemaakt zodra het apparaat niet meer gezien wordt, zodat er
-  geen verouderde waarde blijft staan die suggereert dat het nog in bereik is.
-- README: uitleg over de bereikbaarheidssensor, en de twee foutwijzen zijn nu aan hun
-  kenmerkende duur in het log te herkennen (0,000 s = apparaat uit; ~21 s = verbonden
-  maar geen antwoord).
+- **`binary_sensor.poollab_reachable`** (device class `connectivity`): shows live whether
+  Home Assistant hears the device advertising. Deliberately not a `CoordinatorEntity` —
+  it tracks current Bluetooth reception, not the outcome of the last read. Attributes:
+  `received_via`, `rssi`, `last_read_successful`.
+- **`sensor.poollab_signal_strength`**: RSSI of the last advertisement in dBm. Cleared
+  once the device is out of range, so no stale value suggests it is still in reach.
 
 ## [0.6.0-mh.1] - 2026-08-01
 
-Eerste versie die op echte hardware is bevestigd (PoolLab 1.0, MAC-prefix `60:44:7A:`).
-Een volledige uitlezing duurt 1,4–2,8 seconden via een ESPHome Bluetooth-proxy.
+First version confirmed on real hardware (PoolLab 1.0, MAC prefix `60:44:7A:`). A full
+read takes 1.4–2.8 seconds over an ESPHome Bluetooth proxy.
 
 ### Added
-- **Knop "Klok gelijkzetten"** (`PCMD_API_SET_TIME`, commando `0x02`). Het apparaat
-  stempelt elke meting met zijn eigen klok, dus drift daar komt rechtstreeks terug in
-  het `measured_at`-attribuut. Na het zetten volgt automatisch een verse uitlezing.
-- Logo en banner (`images/`, zelfstandige SVG's zonder externe afhankelijkheden).
-- README uitgebreid tot een volledige handleiding: vergelijking met de
-  cloud-integraties, vereisten voor de Bluetooth-proxy, entiteiten- en
-  attributentabellen, automation-voorbeelden, een tabel voor probleemoplossing en een
-  beschrijving van het protocol.
+- **Set clock button** (`PCMD_API_SET_TIME`, `0x02`). The device stamps every measurement
+  with its own clock, so drift lands straight in `measured_at`. A fresh read follows
+  automatically.
+- Logo and banner (`images/`, self-contained SVG).
+- README expanded into a full guide.
 
 ### Changed
-- De verbindingsopzet is uitgefactoreerd naar `_connect()`, zodat uitlezen en
-  klokinstellen dezelfde route delen.
+- Connection setup extracted into `_connect()`, shared by reading and clock setting.
 
 ### Verified on hardware
-- `GET_INFO` levert een correct batterijniveau.
-- `GET_MEASURES` ontleedt een echt meetrecord volledig juist: parametertype 9 herkend
-  als pH, plus volgnummer, tijdstempel en statuscode. Een meting zonder reagenstablet
-  komt terug als `measure_status` 1 → attribuut `status: "onder meetbereik"`, wat
-  bevestigt dat ook het statusveld op de juiste offset gelezen wordt.
-- De pH-fix uit 0.5.0-mh.1 is bevestigd: geen "not a valid unit"-waarschuwing meer.
+- `GET_INFO` returns a correct battery level.
+- `GET_MEASURES` decodes a real record correctly: parameter type 9 recognised as pH, plus
+  sequence number, timestamp and status code.
+- The pH fix from 0.5.0-mh.1 confirmed: no more "not a valid unit" warning.
 
 ## [0.5.0-mh.1] - 2026-08-01
 
-Eerste release van de fork, afgesplitst van upstream
-[mf76130/ha-poollab-local](https://github.com/mf76130/ha-poollab-local) v0.4.1.
+First release of this fork, split from
+[mf76130/ha-poollab-local](https://github.com/mf76130/ha-poollab-local) v0.4.1, which was
+explicitly untested on hardware.
 
 ### Fixed
-- **pH-sensoren logden een waarschuwing bij elke start.** De pH-entiteiten
-  combineerden `device_class: ph` met eenheid `"pH"`, terwijl Home Assistant
-  voor die device class uitsluitend `None` accepteert
-  (`DEVICE_CLASS_UNITS[SensorDeviceClass.PH] == {None}`). De eenheid wordt nu
-  weggelaten voor pH; overige parameters houden `ppm`.
-- **Een onzinnige apparaatklok liet de hele uitlezing klappen.** Het
-  `unix_time`-veld uit `GET_INFO` is een uint64; een niet-geïnitialiseerde of
-  corrupte klok gooide `OverflowError`/`OSError` uit `datetime.fromtimestamp`,
-  buiten de `BleakError`/`TimeoutError` die de coordinator opvangt. De waarde
-  wordt nu genegeerd in plaats van fataal.
-- **Corrupte meetrecords konden `nan` als sensorwaarde opleveren**, wat de
-  langetermijnstatistiek vervuilt. Niet-eindige floats worden overgeslagen.
+- **pH sensors logged a warning on every start.** They combined `device_class: ph` with
+  unit `"pH"`, while Home Assistant accepts only `None` for that device class
+  (`DEVICE_CLASS_UNITS[SensorDeviceClass.PH] == {None}`).
+- **An implausible device clock aborted the entire read.** The `unix_time` field from
+  `GET_INFO` is a uint64; an uninitialised or corrupt clock raised
+  `OverflowError`/`OSError` from `datetime.fromtimestamp`, outside the `BleakError` and
+  `TimeoutError` the coordinator catches.
+- **Corrupt records could yield `nan` as a sensor value**, polluting long-term statistics.
+  Non-finite floats are now skipped.
 
 ### Added
-- Attribuut **`measured_at`** per meetsensor: wanneer de meting daadwerkelijk
-  op het apparaat is gedaan. Zonder dit is een waarde van een uur geleden niet
-  te onderscheiden van een die drie weken oud is, omdat het apparaat alleen op
-  afroep wordt uitgelezen.
-- Sensor **"Laatste meting"** (`device_class: timestamp`) met het tijdstip van
-  de meest recente meting, zodat automations op veroudering kunnen sturen
-  ("al twee weken geen watertest gedaan").
-- **`tests/test_parsers.py`**: offline validatie van de frame-parsers tegen
-  synthetische protocolframes (GET_INFO en GET_MEASURES), inclusief de
-  randgevallen hierboven. Draait zonder hardware en zonder HA-runtime.
-- Nederlandse vertaling (`translations/nl.json`).
+- **`measured_at`** attribute per measurement sensor. The device is only read on demand,
+  so without a timestamp a reading from an hour ago is indistinguishable from one three
+  weeks old.
+- **Last measurement** sensor (`device_class: timestamp`) so automations can act on
+  staleness.
+- **`tests/test_parsers.py`**: offline validation of the frame parsers against synthetic
+  protocol frames, covering the edge cases above. No hardware or HA runtime needed.
 
 ### Changed
-- Interface vernederlandst: knop "Jetzt abrufen" → **"Nu ophalen"**,
-  statuswaarden `zu niedrig`/`zu hoch` → **`te laag`**/**`te hoog`**,
-  `underrange`/`overrange` → **`onder meetbereik`**/**`boven meetbereik`**,
-  batterijsensor → **"Batterij"**.
-- Batterijsensor gemarkeerd als `EntityCategory.DIAGNOSTIC`.
-- Streefwaarden (`IDEAL_RANGES`) vervangen door gangbare richtwaarden voor een
-  privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
-  had hier de waarden van één specifiek zwembad staan.
+- Target ranges (`IDEAL_RANGES`) replaced with common guidance figures for a private
+  chlorine outdoor pool; upstream carried the values of one specific pool.
+- Battery sensor marked as diagnostic.
 
+[2.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.0.0-mh.1
 [1.1.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.1-mh.1
 [1.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.0-mh.1
 [1.0.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.1-mh.1

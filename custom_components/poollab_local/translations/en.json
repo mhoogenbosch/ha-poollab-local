@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Select PoolLab device",
-        "description": "Choose the PoolLab 1.0 water tester to connect to via Bluetooth.",
+        "description": "Choose the PoolLab 1.0 water tester to connect to over Bluetooth.",
         "data": {
           "address": "Device"
         }
@@ -15,9 +15,67 @@
       }
     },
     "abort": {
-      "no_devices_found": "No PoolLab devices found nearby. Make sure the device is powered on and within Bluetooth range (directly or via an ESPHome Bluetooth proxy).",
-      "not_supported": "This Bluetooth device is not a supported PoolLab device.",
+      "no_devices_found": "No PoolLab found nearby. Switch the device on and make sure it is within range of a Bluetooth adapter or ESPHome Bluetooth proxy. Note that the PoolLab powers itself off after about 5 minutes.",
+      "not_supported": "This Bluetooth device is not a supported PoolLab.",
       "already_configured": "This device is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Battery"
+      },
+      "last_measurement": {
+        "name": "Last measurement"
+      },
+      "signal_strength": {
+        "name": "Signal strength"
+      },
+      "via_proxy": {
+        "name": "Via proxy"
+      },
+      "stored_results": {
+        "name": "Stored measurements"
+      },
+      "clock_drift": {
+        "name": "Clock drift"
+      },
+      "lcd_contrast": {
+        "name": "LCD contrast"
+      }
+    },
+    "binary_sensor": {
+      "reachable": {
+        "name": "Reachable"
+      }
+    },
+    "button": {
+      "fetch_now": {
+        "name": "Fetch now"
+      },
+      "set_clock": {
+        "name": "Set clock"
+      },
+      "sleep": {
+        "name": "Sleep"
+      },
+      "restart": {
+        "name": "Restart"
+      },
+      "contrast_up": {
+        "name": "Contrast up"
+      },
+      "contrast_down": {
+        "name": "Contrast down"
+      },
+      "erase_memory": {
+        "name": "Erase memory"
+      }
+    },
+    "select": {
+      "unit_mode": {
+        "name": "Unit"
+      }
     }
   }
 }

@@ -42,7 +42,7 @@ class PoolLabReachableSensor(BinarySensorEntity):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Bereikbaar"
+    _attr_translation_key = "reachable"
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_should_poll = True
@@ -85,15 +85,15 @@ class PoolLabReachableSensor(BinarySensorEntity):
         )
 
         extra: dict[str, Any] = {
-            "laatste_uitlezing_gelukt": self._coordinator.last_update_success,
+            "last_read_successful": self._coordinator.last_update_success,
         }
 
         service_info = bluetooth.async_last_service_info(
             self.hass, self._address, connectable=True
         )
         if service_info is not None:
-            extra["signaalsterkte_dbm"] = service_info.rssi
-            extra["ontvangen_via"] = _scanner_name(self.hass, service_info)
+            extra["rssi"] = service_info.rssi
+            extra["received_via"] = _scanner_name(self.hass, service_info)
 
         self._extra = extra
 
@@ -102,7 +102,7 @@ def _scanner_name(hass: HomeAssistant, service_info: Any) -> str:
     """Human-readable name of the adapter/proxy that last heard the device."""
     source = getattr(service_info, "source", None)
     if not source:
-        return "onbekend"
+        return "unknown"
     try:
         scanner = bluetooth.async_scanner_by_source(hass, source)
     except Exception:  # noqa: BLE001 - helper availability varies per HA version

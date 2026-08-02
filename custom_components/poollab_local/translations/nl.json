@@ -19,5 +19,63 @@
       "not_supported": "Dit Bluetooth-apparaat is geen ondersteunde PoolLab.",
       "already_configured": "Dit apparaat is al geconfigureerd."
     }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Batterij"
+      },
+      "last_measurement": {
+        "name": "Laatste meting"
+      },
+      "signal_strength": {
+        "name": "Signaalsterkte"
+      },
+      "via_proxy": {
+        "name": "Via proxy"
+      },
+      "stored_results": {
+        "name": "Opgeslagen metingen"
+      },
+      "clock_drift": {
+        "name": "Klokafwijking"
+      },
+      "lcd_contrast": {
+        "name": "LCD-contrast"
+      }
+    },
+    "binary_sensor": {
+      "reachable": {
+        "name": "Bereikbaar"
+      }
+    },
+    "button": {
+      "fetch_now": {
+        "name": "Nu ophalen"
+      },
+      "set_clock": {
+        "name": "Klok gelijkzetten"
+      },
+      "sleep": {
+        "name": "Slaapstand"
+      },
+      "restart": {
+        "name": "Herstarten"
+      },
+      "contrast_up": {
+        "name": "Contrast omhoog"
+      },
+      "contrast_down": {
+        "name": "Contrast omlaag"
+      },
+      "erase_memory": {
+        "name": "Geheugen wissen"
+      }
+    },
+    "select": {
+      "unit_mode": {
+        "name": "Eenheid"
+      }
+    }
   }
 }

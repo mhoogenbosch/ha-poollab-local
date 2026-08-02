@@ -35,7 +35,7 @@ class PoolLabUnitModeSelect(CoordinatorEntity[PoolLabCoordinator], SelectEntity)
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Eenheid"
+    _attr_translation_key = "unit_mode"
     _attr_icon = "mdi:beaker-outline"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_options = [UNIT_PPM, UNIT_MGL]

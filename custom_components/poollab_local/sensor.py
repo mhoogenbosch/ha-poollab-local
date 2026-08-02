@@ -180,7 +180,7 @@ class PoolLabBatterySensor(PoolLabBaseEntity, SensorEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_name = "Batterij"
+    _attr_translation_key = "battery"
 
     def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
         super().__init__(coordinator, address)
@@ -213,7 +213,7 @@ class PoolLabSignalSensor(SensorEntity):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Signaalsterkte"
+    _attr_translation_key = "signal_strength"
     _attr_icon = "mdi:signal-variant"
     _attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
     _attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
@@ -253,7 +253,7 @@ class PoolLabSignalSensor(SensorEntity):
 
         self._rssi = service_info.rssi
         name = _scanner_name(self.hass, getattr(service_info, "source", None))
-        self._extra = {"ontvangen_via": name or "onbekend"}
+        self._extra = {"received_via": name or "unknown"}
 
 
 class PoolLabProxySensor(SensorEntity):
@@ -264,7 +264,7 @@ class PoolLabProxySensor(SensorEntity):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Via proxy"
+    _attr_translation_key = "via_proxy"
     _attr_icon = "mdi:access-point"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_should_poll = True
@@ -295,22 +295,22 @@ class PoolLabProxySensor(SensorEntity):
         if service_info is None:
             # Keep the last known proxy rather than blanking it: knowing where
             # the device was last heard stays useful while it is switched off.
-            self._extra = {"in_bereik": False}
+            self._extra = {"in_range": False}
             return
 
         source = getattr(service_info, "source", None)
         self._proxy = _scanner_name(self.hass, source)
         self._extra = {
-            "in_bereik": True,
-            "signaalsterkte_dbm": service_info.rssi,
-            "adapter_id": str(source) if source else None,
+            "in_range": True,
+            "rssi": service_info.rssi,
+            "source_id": str(source) if source else None,
         }
 
 
 class PoolLabStoredResultsSensor(PoolLabBaseEntity, SensorEntity):
     """Number of measurements stored on the device (max 16 cells x 16 = 256)."""
 
-    _attr_name = "Opgeslagen metingen"
+    _attr_translation_key = "stored_results"
     _attr_icon = "mdi:database"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -342,7 +342,7 @@ class PoolLabStoredResultsSensor(PoolLabBaseEntity, SensorEntity):
         value = self.native_value
         if value is None:
             return {}
-        return {"maximum": DEVICE_MEMORY_SLOTS, "geheugen_vol": value >= DEVICE_MEMORY_SLOTS}
+        return {"maximum": DEVICE_MEMORY_SLOTS, "memory_full": value >= DEVICE_MEMORY_SLOTS}
 
 
 class PoolLabClockDriftSensor(PoolLabBaseEntity, SensorEntity):
@@ -352,7 +352,7 @@ class PoolLabClockDriftSensor(PoolLabBaseEntity, SensorEntity):
     straight in `measured_at`. Press "Klok gelijkzetten" to correct it.
     """
 
-    _attr_name = "Klokafwijking"
+    _attr_translation_key = "clock_drift"
     _attr_icon = "mdi:clock-alert-outline"
     _attr_native_unit_of_measurement = "s"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -378,7 +378,7 @@ class PoolLabContrastSensor(PoolLabBaseEntity, SensorEntity):
     the reply to a plus/minus step, so this stays empty until you nudge it.
     """
 
-    _attr_name = "LCD-contrast"
+    _attr_translation_key = "lcd_contrast"
     _attr_icon = "mdi:contrast-box"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = False
@@ -400,7 +400,7 @@ class PoolLabLastMeasurementSensor(PoolLabBaseEntity, SensorEntity):
     """
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_name = "Laatste meting"
+    _attr_translation_key = "last_measurement"
     _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
@@ -510,14 +510,14 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             return attrs
 
         attrs: dict[str, Any] = {
-            "status": MEASURE_STATUS_NAMES.get(record["status"], "onbekend"),
+            "status": MEASURE_STATUS_NAMES.get(record["status"], "unknown"),
             "measure_id": record["measure_id"],
         }
 
         if record.get("clamped"):
             # The device reports 0.0 on overrange; the shown value is the top of
             # the measuring range, so the real value is at least that.
-            attrs["waarde_is_ondergrens"] = True
+            attrs["value_is_minimum"] = True
 
 
 
@@ -530,7 +530,7 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
 
         device_range = MEASUREMENT_RANGES.get(self.type_id)
         if device_range is not None:
-            attrs["meetbereik_min"], attrs["meetbereik_max"] = device_range
+            attrs["range_min"], attrs["range_max"] = device_range
 
         ideal_range = IDEAL_RANGES.get(self.type_id)
         if ideal_range is not None:
@@ -555,8 +555,8 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
             return {}
         when = _as_utc(skipped.get("timestamp"))
         return {
-            "genegeerde_meting": MEASURE_STATUS_NAMES.get(
-                skipped["status"], "onbruikbaar"
+            "skipped_reading": MEASURE_STATUS_NAMES.get(
+                skipped["status"], "unusable"
             ),
-            "genegeerde_meting_op": when.isoformat() if when else None,
+            "skipped_reading_at": when.isoformat() if when else None,
         }
