@@ -131,9 +131,9 @@ check("underrange-status blijft behouden",
       [r["status"] for r in Coordinator._parse_measurements(
           (bytes([0xAB]) + record(9, 9, 1, stamp, 0.0)).ljust(250, b"\x00")) if r],
       [1])
-check("pH-waarde", records[0]["value"], 7.31)
+check("pH-waarde", round(records[0]["value"], 2), 7.31)
 check("pH-type", records[0]["name"], "pH")
-check("vrij chloor", records[1]["value"], 1.42)
+check("vrij chloor", round(records[1]["value"], 2), 1.42)
 check("timestamp record 1", records[0]["timestamp"], stamp)
 check("status overrange", records[2]["status"], 2)
 check("lege helft -> 0 records", len([r for r in Coordinator._parse_measurements(bytes([0xAB]) + b"\x00" * 128) if r]), 0)
@@ -152,6 +152,11 @@ ok_rec = [r for r in Coordinator._parse_measurements(
     (bytes([0xAB]) + record(21, 10, 0, stamp, 95.0)).ljust(250, b"\x00")) if r][0]
 check("normale meting niet geklemd", ok_rec["clamped"], False)
 check("normale waarde ongewijzigd", ok_rec["value"], 95.0)
+# De ruwe apparaatwaarde wordt bewaard; afronden gebeurt pas bij de weergave,
+# anders wijkt HA af van het display (0.026 -> 0.03 vs 0.02 op het apparaat).
+raw = [r for r in Coordinator._parse_measurements(
+    (bytes([0xAB]) + record(22, 8, 0, stamp, 0.026)).ljust(250, b"\x00")) if r][0]
+check("ruwe waarde niet afgerond", round(raw["value"], 3), 0.026)
 
 print("\n" + ("❌ MISLUKT: " + ", ".join(failures) if failures else "✅ Alle parsercontroles geslaagd"))
 sys.exit(1 if failures else 0)

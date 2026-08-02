@@ -441,10 +441,11 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
         super().__init__(coordinator, address)
         self.type_id = type_id
 
-        name, unit, _decimals = MEASUREMENT_TYPES.get(
+        name, unit, decimals = MEASUREMENT_TYPES.get(
             type_id, (f"Unknown scenario {type_id}", "ppm", 2)
         )
         self._attr_name = name
+        self._attr_suggested_display_precision = decimals
         self._attr_unique_id = f"{address}_measure_{type_id}"
         self._attr_icon = "mdi:ph" if unit == "pH" else "mdi:test-tube"
         if unit == "pH":

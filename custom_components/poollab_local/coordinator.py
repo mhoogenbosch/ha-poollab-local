@@ -439,7 +439,7 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 records.append(None)
                 continue
 
-            name, unit, decimals = MEASUREMENT_TYPES.get(
+            name, unit, _decimals = MEASUREMENT_TYPES.get(
                 measure_type, (f"Unknown scenario {measure_type}", "ppm", 2)
             )
 
@@ -463,7 +463,12 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "unit": unit,
                     "status": measure_status,
                     "timestamp": timestamp,
-                    "value": round(value, decimals),
+                    # Store the device value as-is. Rounding here loses
+                    # precision and made Home Assistant disagree with the
+                    # device display (0.026 showed as 0.03 while the device
+                    # shows 0.02). Presentation is handled by the entity's
+                    # suggested_display_precision instead.
+                    "value": value,
                     # True when the value is the top of the measuring range
                     # rather than a real reading: the actual value is at least
                     # this much.

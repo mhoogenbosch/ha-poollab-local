@@ -5,6 +5,19 @@ Alle noemenswaardige wijzigingen aan deze fork worden hier vastgelegd.
 Het formaat volgt [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/),
 en het versienummer volgt upstream met een `-mh.N`-suffix voor fork-releases.
 
+## [1.1.1-mh.1] - 2026-08-02
+
+### Fixed
+- **Home Assistant kon 0,01 afwijken van het apparaatdisplay.** De meetwaarde werd bij
+  het uitlezen al afgerond op het aantal decimalen uit de specificatie. Stuurt het
+  apparaat 0,026, dan werd dat `0.03` terwijl het display `0.02` toont. Dat kostte
+  bovendien onnodig precisie in de langetermijnstatistiek.
+
+  De onbewerkte apparaatwaarde wordt nu opgeslagen; het aantal decimalen is verplaatst
+  naar **`suggested_display_precision`** op de entiteit, zodat Home Assistant zelf de
+  weergave verzorgt. Dat is ook de gangbare werkwijze: de state houdt de volle precisie,
+  de presentatie is een weergavekeuze.
+
 ## [1.1.0-mh.1] - 2026-08-01
 
 ### Fixed
@@ -214,6 +227,7 @@ Eerste release van de fork, afgesplitst van upstream
   privé-buitenbad met chloor, aangevuld met broom en totale hardheid. Upstream
   had hier de waarden van één specifiek zwembad staan.
 
+[1.1.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.1-mh.1
 [1.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.0-mh.1
 [1.0.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.1-mh.1
 [1.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.0.0-mh.1
