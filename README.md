@@ -109,6 +109,7 @@ want it anyway, set `UPDATE_INTERVAL_SECONDS` in `const.py` to a number of secon
 | `sensor.poollab_<parameter>` | sensor | One per measured parameter (pH, free chlorine, …) |
 | `sensor.poollab_combined_chlorine` | sensor | Chloramines, derived as total − free chlorine |
 | `sensor.poollab_last_measurement` | sensor | Timestamp of the most recent measurement |
+| `binary_sensor.poollab_shock_needed` | binary | Does the pool need shocking? (`problem` class) |
 | `binary_sensor.poollab_reachable` | diagnostic | Does Home Assistant see the device right now? |
 | `sensor.poollab_via_proxy` | diagnostic | Which adapter or Bluetooth proxy hears the device |
 | `sensor.poollab_signal_strength` | diagnostic | RSSI of the last advertisement, in dBm |
@@ -164,6 +165,15 @@ The sensor stays empty when subtracting would be meaningless: only one of the tw
 readings more than 15 minutes apart, or either one out of range. It reports
 `reason_unavailable` when it declines. See **[docs/CHLORINE_CHEMISTRY.md](docs/CHLORINE_CHEMISTRY.md)**
 for what the numbers mean and how chlorine interacts with pH and stabiliser.
+
+**`binary_sensor.poollab_shock_needed`** turns that into a straight answer, using device
+class `problem` so it reads as a warning. Its `advice` attribute spells out what to do —
+and when free chlorine is low it says so even if no shocking is needed, because "no
+shocking needed" alone would be misleading in that case.
+
+It stays **`unknown` rather than `off`** whenever combined chlorine cannot be determined.
+"No shock needed" and "I cannot tell" are different answers, and only one of them is safe
+to act on.
 
 ### Out-of-range readings
 

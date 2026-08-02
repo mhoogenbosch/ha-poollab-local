@@ -18,8 +18,18 @@ from homeassistant.const import CONF_ADDRESS, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANUFACTURER, MODEL
+from .const import (
+    COMBINED_CHLORINE_IDEAL_MAX,
+    COMBINED_CHLORINE_MAX_GAP_SECONDS,
+    DOMAIN,
+    MANUFACTURER,
+    MODEL,
+    OEM_VARIANTS,
+    TYPE_FREE_CHLORINE,
+    TYPE_TOTAL_CHLORINE,
+)
 from .coordinator import PoolLabCoordinator
 
 
@@ -31,7 +41,101 @@ async def async_setup_entry(
     """Set up the PoolLab connectivity sensor."""
     coordinator: PoolLabCoordinator = hass.data[DOMAIN][entry.entry_id]
     address = entry.data[CONF_ADDRESS]
-    async_add_entities([PoolLabReachableSensor(coordinator, address)])
+    async_add_entities(
+        [
+            PoolLabReachableSensor(coordinator, address),
+            PoolLabShockNeededSensor(coordinator, address),
+        ]
+    )
+
+
+class PoolLabShockNeededSensor(CoordinatorEntity[PoolLabCoordinator], BinarySensorEntity):
+    """Whether the pool needs shocking, based on combined chlorine.
+
+    Chloramines above the target mean the chlorine present is largely spent:
+    it no longer disinfects but does cause the smell and irritation. Shocking
+    breaks them down.
+
+    Stays `unknown` rather than `off` when it cannot tell. "No shock needed"
+    and "I have no idea" are different answers, and only one of them is safe
+    to act on.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "shock_needed"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator)
+        self._address = address
+        self._attr_unique_id = f"{address}_shock_needed"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        info = (self.coordinator.data or {}).get("device_info", {})
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._address)},
+            connections={("bluetooth", self._address)},
+            name="PoolLab",
+            manufacturer=MANUFACTURER,
+            model=OEM_VARIANTS.get(info.get("active_id"), MODEL),
+            sw_version=str(info.get("fw_version", "")) or None,
+        )
+
+    @property
+    def icon(self) -> str:
+        return "mdi:flash-alert" if self.is_on else "mdi:water-check"
+
+    def _combined(self) -> tuple[float, dict, dict] | None:
+        """Combined chlorine, only when the two readings genuinely pair up."""
+        measurements = (self.coordinator.data or {}).get("measurements", {})
+        free = measurements.get(TYPE_FREE_CHLORINE)
+        total = measurements.get(TYPE_TOTAL_CHLORINE)
+        if not free or not total:
+            return None
+        if free.get("clamped") or total.get("clamped"):
+            return None
+        if abs(total["timestamp"] - free["timestamp"]) > COMBINED_CHLORINE_MAX_GAP_SECONDS:
+            return None
+        return max(0.0, total["value"] - free["value"]), free, total
+
+    @property
+    def is_on(self) -> bool | None:
+        result = self._combined()
+        if result is None:
+            return None
+        combined, _free, _total = result
+        return combined > COMBINED_CHLORINE_IDEAL_MAX
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        result = self._combined()
+        if result is None:
+            return {
+                "advice": "unknown - measure free and total chlorine in one session",
+            }
+
+        combined, free, total = result
+        attrs: dict[str, Any] = {
+            "combined_chlorine": round(combined, 2),
+            "free_chlorine": free["value"],
+            "threshold": COMBINED_CHLORINE_IDEAL_MAX,
+        }
+        if combined > COMBINED_CHLORINE_IDEAL_MAX:
+            attrs["advice"] = (
+                f"shock the pool - {combined:.2f} ppm chloramines, "
+                f"above the {COMBINED_CHLORINE_IDEAL_MAX} ppm target"
+            )
+        elif free["value"] < 1.0:
+            # No chloramine problem, but too little chlorine to disinfect;
+            # saying only "no shock needed" would be misleading here.
+            attrs["advice"] = (
+                f"no shocking needed, but free chlorine is only "
+                f"{free['value']:.2f} ppm - add chlorine"
+            )
+        else:
+            attrs["advice"] = "no shocking needed"
+        return attrs
 
 
 class PoolLabReachableSensor(BinarySensorEntity):

@@ -70,6 +70,24 @@ concentrations), the result is reported as `0.0`, not as a negative amount.
 
 ---
 
+## The shock advice sensor
+
+`binary_sensor.poollab_shock_needed` turns the table above into a yes/no, using device
+class `problem`. Its `advice` attribute states the reasoning in words, for example:
+
+- `shock the pool - 0.90 ppm chloramines, above the 0.5 ppm target`
+- `no shocking needed, but free chlorine is only 0.30 ppm - add chlorine`
+- `no shocking needed`
+
+That middle case matters: chloramines can be fine while there is simply too little
+chlorine to disinfect. Reporting only "no shocking needed" would be true and useless.
+
+The sensor is **`unknown` rather than `off`** whenever combined chlorine cannot be
+determined, for the reasons in the previous section. Bear that in mind in automations:
+trigger on the state becoming `on`, not on "not off".
+
+---
+
 ## How chlorine relates to the rest of the water
 
 Chlorine does not act in isolation, which is why a low reading is not always a chlorine

@@ -5,6 +5,22 @@ All notable changes to this fork are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 track upstream with an `-mh.N` suffix for fork releases.
 
+## [2.2.0-mh.1] - 2026-08-02
+
+### Added
+- **`binary_sensor.poollab_shock_needed`** — a straight yes/no on whether the pool needs
+  shocking, from combined chlorine against the 0.5 ppm target. Device class `problem`, so
+  it presents as a warning.
+
+  Its `advice` attribute states the reasoning in words, and covers the case where
+  chloramines are fine but free chlorine is too low to disinfect — reporting only "no
+  shocking needed" would be true and useless there.
+
+  The sensor is **`unknown` rather than `off`** whenever combined chlorine cannot be
+  determined. "No shock needed" and "I cannot tell" are different answers, and only one is
+  safe to act on; in automations, trigger on the state becoming `on` rather than on
+  "not off".
+
 ## [2.1.0-mh.1] - 2026-08-02
 
 ### Added
@@ -213,6 +229,7 @@ explicitly untested on hardware.
   chlorine outdoor pool; upstream carried the values of one specific pool.
 - Battery sensor marked as diagnostic.
 
+[2.2.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.2.0-mh.1
 [2.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.1.0-mh.1
 [2.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.0.0-mh.1
 [1.1.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.1-mh.1

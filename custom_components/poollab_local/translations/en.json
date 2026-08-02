@@ -50,6 +50,9 @@
     "binary_sensor": {
       "reachable": {
         "name": "Reachable"
+      },
+      "shock_needed": {
+        "name": "Shock treatment needed"
       }
     },
     "button": {
