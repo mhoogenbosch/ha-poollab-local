@@ -107,6 +107,7 @@ want it anyway, set `UPDATE_INTERVAL_SECONDS` in `const.py` to a number of secon
 | `button.poollab_erase_memory` | button | Wipe all measurements — **disabled by default**, irreversible |
 | `select.poollab_unit` | select | Device display in ppm or mg/L |
 | `sensor.poollab_<parameter>` | sensor | One per measured parameter (pH, free chlorine, …) |
+| `sensor.poollab_combined_chlorine` | sensor | Chloramines, derived as total − free chlorine |
 | `sensor.poollab_last_measurement` | sensor | Timestamp of the most recent measurement |
 | `binary_sensor.poollab_reachable` | diagnostic | Does Home Assistant see the device right now? |
 | `sensor.poollab_via_proxy` | diagnostic | Which adapter or Bluetooth proxy hears the device |
@@ -152,6 +153,17 @@ timestamps its own measurements, so when this grows, press **Set clock**.
 The measuring range comes from the official documentation and explains why a reading falls
 outside it: pH, for instance, is only measured between **6.50 and 8.40**, so a failed pH
 test inevitably lands below range.
+
+### Combined chlorine
+
+Free and total chlorine are measured; **combined chlorine** — the chloramines that cause
+the "chlorine smell" and stinging eyes — is derived as total minus free. That is the value
+telling you whether the pool needs shocking (target: below 0.5 ppm).
+
+The sensor stays empty when subtracting would be meaningless: only one of the two measured,
+readings more than 15 minutes apart, or either one out of range. It reports
+`reason_unavailable` when it declines. See **[docs/CHLORINE_CHEMISTRY.md](docs/CHLORINE_CHEMISTRY.md)**
+for what the numbers mean and how chlorine interacts with pH and stabiliser.
 
 ### Out-of-range readings
 

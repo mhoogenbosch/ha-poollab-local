@@ -5,6 +5,26 @@ All notable changes to this fork are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 track upstream with an `-mh.N` suffix for fork releases.
 
+## [2.1.0-mh.1] - 2026-08-02
+
+### Added
+- **`sensor.poollab_combined_chlorine`** — chloramines, derived as total minus free
+  chlorine. This is the value that tells you whether the pool needs shocking: chlorine
+  already spent on contaminants, responsible for the "chlorine smell" and stinging eyes.
+  Target is below 0.5 ppm.
+
+  The sensor deliberately produces nothing when subtracting would be meaningless, and says
+  so via `reason_unavailable`: when only one of the two was measured, when the readings are
+  more than 15 minutes apart (total chlorine is meant to be measured seconds after free
+  chlorine in the same cuvette), or when either reading is clamped because it was out of
+  range. Measurement noise making free exceed total yields `0.0`, never a negative amount.
+- **[docs/CHLORINE_CHEMISTRY.md](docs/CHLORINE_CHEMISTRY.md)** explaining the three chlorine
+  values, how to read them together, why the sensor sometimes stays empty, and how chlorine
+  interacts with pH, cyanuric acid and alkalinity. Inspired by the equivalent document in
+  [stefanh12/Poollab](https://github.com/stefanh12/Poollab) (MIT), rewritten for this
+  integration's local measurements.
+- `tests/test_combined_chlorine.py` covering the pairing rules.
+
 ## [2.0.0-mh.1] - 2026-08-02
 
 The integration is now bilingual (English/Dutch) and ready to share. **Breaking:** entity
@@ -193,6 +213,7 @@ explicitly untested on hardware.
   chlorine outdoor pool; upstream carried the values of one specific pool.
 - Battery sensor marked as diagnostic.
 
+[2.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.1.0-mh.1
 [2.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.0.0-mh.1
 [1.1.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.1-mh.1
 [1.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v1.1.0-mh.1

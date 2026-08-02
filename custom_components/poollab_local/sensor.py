@@ -28,6 +28,8 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    COMBINED_CHLORINE_IDEAL_MAX,
+    COMBINED_CHLORINE_MAX_GAP_SECONDS,
     DEVICE_MEMORY_SLOTS,
     DOMAIN,
     IDEAL_RANGE_HIGH,
@@ -40,6 +42,8 @@ from .const import (
     MEASUREMENT_RANGES,
     MODEL,
     OEM_VARIANTS,
+    TYPE_FREE_CHLORINE,
+    TYPE_TOTAL_CHLORINE,
 )
 from .coordinator import PoolLabCoordinator
 
@@ -99,6 +103,7 @@ async def async_setup_entry(
         PoolLabStoredResultsSensor(coordinator, address),
         PoolLabClockDriftSensor(coordinator, address),
         PoolLabContrastSensor(coordinator, address),
+        PoolLabCombinedChlorineSensor(coordinator, address),
     ]
 
     # Recreate a sensor for every measurement type ever seen on this device
@@ -390,6 +395,77 @@ class PoolLabContrastSensor(PoolLabBaseEntity, SensorEntity):
     @property
     def native_value(self) -> int | None:
         return (self.coordinator.data or {}).get("device_info", {}).get("contrast")
+
+
+class PoolLabCombinedChlorineSensor(PoolLabBaseEntity, SensorEntity):
+    """Combined chlorine (chloramines), derived as total minus free.
+
+    This is the value that tells you whether the pool needs shocking: it is the
+    chlorine already spent on contaminants, and what causes the "chlorine
+    smell" and stinging eyes. The device measures total chlorine in the same
+    cuvette right after free chlorine, so the two are meant to be subtracted.
+
+    Deliberately conservative about when it will produce a number - see
+    `_pair()`. A difference between readings that do not belong together is
+    worse than no value at all.
+    """
+
+    _attr_translation_key = "combined_chlorine"
+    _attr_icon = "mdi:water-alert"
+    _attr_native_unit_of_measurement = "ppm"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, coordinator: PoolLabCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_combined_chlorine"
+
+    def _pair(self) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """Return (free, total) only when subtracting them is meaningful."""
+        measurements = (self.coordinator.data or {}).get("measurements", {})
+        free = measurements.get(TYPE_FREE_CHLORINE)
+        total = measurements.get(TYPE_TOTAL_CHLORINE)
+        if not free or not total:
+            return None
+        # A clamped (overrange) reading is a lower bound, not a value; the
+        # difference would be a guess presented as fact.
+        if free.get("clamped") or total.get("clamped"):
+            return None
+        # Readings from separate sessions say nothing about each other.
+        if abs(total["timestamp"] - free["timestamp"]) > COMBINED_CHLORINE_MAX_GAP_SECONDS:
+            return None
+        return free, total
+
+    @property
+    def native_value(self) -> float | None:
+        pair = self._pair()
+        if pair is None:
+            return None
+        free, total = pair
+        # Measurement noise can make free exceed total; that means zero
+        # combined chlorine, not a negative amount.
+        return max(0.0, total["value"] - free["value"])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        pair = self._pair()
+        if pair is None:
+            return {"reason_unavailable": "no matching free and total chlorine reading"}
+
+        free, total = pair
+        value = max(0.0, total["value"] - free["value"])
+        measured_at = _as_utc(total.get("timestamp"))
+        attrs: dict[str, Any] = {
+            "free_chlorine": free["value"],
+            "total_chlorine": total["value"],
+            "ideal_high": COMBINED_CHLORINE_IDEAL_MAX,
+            "ideal_range_status": (
+                IDEAL_RANGE_HIGH if value > COMBINED_CHLORINE_IDEAL_MAX else IDEAL_RANGE_OK
+            ),
+        }
+        if measured_at is not None:
+            attrs["measured_at"] = measured_at.isoformat()
+        return attrs
 
 
 class PoolLabLastMeasurementSensor(PoolLabBaseEntity, SensorEntity):

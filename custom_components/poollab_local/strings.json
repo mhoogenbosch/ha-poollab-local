@@ -42,6 +42,9 @@
       },
       "lcd_contrast": {
         "name": "LCD contrast"
+      },
+      "combined_chlorine": {
+        "name": "Combined chlorine"
       }
     },
     "binary_sensor": {

@@ -47,6 +47,20 @@ DEFAULT_TIMEOUT = 20  # seconds; BLE connect + command round trip can be slow
 # "Fetch now" button entity right after taking a measurement instead.
 UPDATE_INTERVAL_SECONDS: int | None = None
 
+# Parameter type IDs referenced directly in code
+TYPE_TOTAL_CHLORINE = 1
+TYPE_FREE_CHLORINE = 8
+
+# Combined chlorine (chloramines) = total - free. Per the user manual (p. 35)
+# the device itself derives it that way. Target is as low as possible; above
+# this the pool generally needs shocking.
+COMBINED_CHLORINE_IDEAL_MAX = 0.5
+
+# Free and total chlorine are measured in the same cuvette moments apart (DPD 3
+# is added to the dissolved DPD 1). Subtracting readings from different sessions
+# would be meaningless, so only pair them when taken close together.
+COMBINED_CHLORINE_MAX_GAP_SECONDS = 15 * 60
+
 # --- Measurement status codes (per flash_measurement_result.measure_status) ---
 MEASURE_STATUS_OK = 0
 MEASURE_STATUS_UNDERRANGE = 1
