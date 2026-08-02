@@ -91,6 +91,22 @@ IDEAL_RANGES: dict[int, tuple[float, float]] = {
     35: (200.0, 400.0),   # Total hardness (ppm)
 }
 
+# --- Configurable target ranges (options flow) ---
+# Only the parameters people realistically tune. The key is stable storage; the
+# type_id links it to a measurement. Anything not listed keeps its IDEAL_RANGES
+# default and can be changed in const.py.
+CONFIGURABLE_TARGETS: dict[str, int] = {
+    "free_chlorine": 8,
+    "total_chlorine": 1,
+    "bromine": 6,
+    "ph": 9,
+    "alkalinity": 10,
+    "cyanuric_acid": 11,
+    "hardness": 35,
+}
+
+OPT_TARGETS = "targets"
+
 # --- Measurement scenario types: type_id -> (name, unit, decimals) ---
 # "ppm" is used as native_unit_of_measurement for all non-pH scenarios, matching
 # the device's own unit naming in the API doc (mg/L mode is a device-side display

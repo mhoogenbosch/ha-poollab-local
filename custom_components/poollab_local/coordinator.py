@@ -42,6 +42,7 @@ from .const import (
     CMD_SET_TIME,
     CMD_SLEEP_DEVICE,
     DEFAULT_TIMEOUT,
+    IDEAL_RANGES,
     MEASURE_STATUS_OVERRANGE,
     MEASURE_STATUS_UNDERRANGE,
     MEASUREMENT_RANGES,
@@ -77,6 +78,9 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # The device has no "get contrast" command, so the level is only known
         # after a plus/minus step. None until the user nudges it.
         self._contrast: int | None = None
+        # Target ranges, set from the config entry (options flow layered over
+        # the defaults in const.py). Not protocol data - purely presentation.
+        self.ideal_ranges: dict[int, tuple[float, float]] = dict(IDEAL_RANGES)
 
     async def _async_update_data(self) -> dict[str, Any]:
         async with self._lock:

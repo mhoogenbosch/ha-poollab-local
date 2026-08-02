@@ -5,6 +5,23 @@ All notable changes to this fork are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 track upstream with an `-mh.N` suffix for fork releases.
 
+## [2.3.0-mh.1] - 2026-08-02
+
+### Added
+- **Target ranges are configurable from the UI** — Settings → Devices & Services →
+  PoolLab Local → **Configure**. A minimum and maximum for free chlorine, total chlorine,
+  bromine, pH, alkalinity, cyanuric acid and hardness, validated so the minimum must be
+  below the maximum.
+
+  They used to live in `IDEAL_RANGES` in `const.py`, which meant every edit was silently
+  wiped by the next update. Stored in the config entry now, so they survive. Changing them
+  reloads the integration so the sensors pick them up immediately. Parameters outside that
+  list still fall back to the defaults in `const.py`.
+- README: a documented automation for reading the device automatically two minutes after
+  it powers on, plus why a fixed polling interval is deliberately not offered — the device
+  is off almost all the time, so polling mostly generates failed attempts, costs battery on
+  the ones that do connect, and can occupy the single BLE connection the LabCOM app needs.
+
 ## [2.2.0-mh.1] - 2026-08-02
 
 ### Added
@@ -229,6 +246,7 @@ explicitly untested on hardware.
   chlorine outdoor pool; upstream carried the values of one specific pool.
 - Battery sensor marked as diagnostic.
 
+[2.3.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.3.0-mh.1
 [2.2.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.2.0-mh.1
 [2.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.1.0-mh.1
 [2.0.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.0.0-mh.1

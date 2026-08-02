@@ -83,5 +83,32 @@
         "name": "Eenheid"
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Streefwaarden",
+        "description": "Stel per parameter je streefbereik in. Deze bepalen de attributen ideal_low, ideal_high en ideal_range_status, en het shockadvies. De standaardwaarden zijn gangbare richtwaarden voor een privé-buitenbad met chloor — pas ze aan op je eigen water.",
+        "data": {
+          "free_chlorine_min": "Vrij chloor — min",
+          "free_chlorine_max": "Vrij chloor — max",
+          "total_chlorine_min": "Totaal chloor — min",
+          "total_chlorine_max": "Totaal chloor — max",
+          "bromine_min": "Broom — min",
+          "bromine_max": "Broom — max",
+          "ph_min": "pH — min",
+          "ph_max": "pH — max",
+          "alkalinity_min": "Totale alkaliniteit — min",
+          "alkalinity_max": "Totale alkaliniteit — max",
+          "cyanuric_acid_min": "Cyanuurzuur (stabilisator) — min",
+          "cyanuric_acid_max": "Cyanuurzuur (stabilisator) — max",
+          "hardness_min": "Totale hardheid — min",
+          "hardness_max": "Totale hardheid — max"
+        }
+      }
+    },
+    "error": {
+      "min_not_below_max": "Het minimum moet lager zijn dan het maximum."
+    }
   }
 }

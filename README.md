@@ -201,22 +201,27 @@ drift upward.
 
 ### Adjusting target ranges
 
-`IDEAL_RANGES` in `const.py` drives the `ideal_*` attributes. The defaults are common
-guidance figures for a private chlorine outdoor pool:
+Target ranges drive the `ideal_low`, `ideal_high` and `ideal_range_status` attributes and
+the shock advice. Set them in the UI: **Settings → Devices & Services → PoolLab Local →
+Configure**. You get a minimum and maximum per parameter:
 
-```python
-IDEAL_RANGES = {
-    1:  (1.0, 3.0),      # Total chlorine (ppm)
-    6:  (2.0, 4.0),      # Bromine (ppm)
-    8:  (1.0, 3.0),      # Free chlorine (ppm)
-    9:  (7.0, 7.4),      # pH
-    10: (80.0, 120.0),   # Total alkalinity (ppm)
-    11: (30.0, 50.0),    # Cyanuric acid (ppm)
-    35: (200.0, 400.0),  # Total hardness (ppm)
-}
-```
+| Parameter | Default |
+|---|---|
+| Free chlorine | 1.0 – 3.0 ppm |
+| Total chlorine | 1.0 – 3.0 ppm |
+| Bromine | 2.0 – 4.0 ppm |
+| pH | 7.0 – 7.4 |
+| Total alkalinity | 80 – 120 ppm |
+| Cyanuric acid | 30 – 50 ppm |
+| Total hardness | 200 – 400 ppm |
 
-These are not part of the BLE protocol; adapt them to your pool (salt water, bromine, spa).
+Changing them reloads the integration, so the sensors pick the new values up immediately.
+The defaults are common guidance figures for a private chlorine outdoor pool — adapt them
+to your own water (salt water, bromine, spa).
+
+Any parameter not in that list keeps the default from `IDEAL_RANGES` in `const.py`. Note
+that editing `const.py` directly does not survive an update, which is exactly why the
+seven above moved into the UI.
 
 ### Automation examples
 
@@ -242,6 +247,29 @@ automation:
             pH is {{ states('sensor.poollab_ph') }}
             ({{ state_attr('sensor.poollab_ph', 'ideal_range_status') }}).
 ```
+
+Read the device automatically after a measurement, so you do not have to press the button:
+
+```yaml
+automation:
+  - alias: "Pool - fetch after a measurement"
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.poollab_reachable
+        to: "on"
+        for: "00:02:00"
+    actions:
+      - action: button.press
+        target:
+          entity_id: button.poollab_fetch_now
+```
+
+The two-minute delay is the point: the device stays on for about five minutes, and you need
+part of that to zero the cuvette and take the reading. Firing the moment it powers up would
+fetch the *previous* measurement. This is also why a fixed polling interval is not offered
+— the device is switched off almost all the time, so polling mostly produces failed
+attempts, costs battery on the ones that connect, and can occupy the single BLE connection
+the LabCOM app needs. Reacting to the device appearing is the useful moment.
 
 Remind yourself when no test has been done for a week:
 

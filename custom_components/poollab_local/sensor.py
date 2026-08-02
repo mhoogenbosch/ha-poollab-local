@@ -608,7 +608,7 @@ class PoolLabMeasurementSensor(PoolLabBaseEntity, SensorEntity):
         if device_range is not None:
             attrs["range_min"], attrs["range_max"] = device_range
 
-        ideal_range = IDEAL_RANGES.get(self.type_id)
+        ideal_range = self.coordinator.ideal_ranges.get(self.type_id)
         if ideal_range is not None:
             ideal_low, ideal_high = ideal_range
             attrs["ideal_low"] = ideal_low

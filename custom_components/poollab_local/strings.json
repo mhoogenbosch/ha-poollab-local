@@ -83,5 +83,32 @@
         "name": "Unit"
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Target ranges",
+        "description": "Set the target range per parameter. These drive the ideal_low, ideal_high and ideal_range_status attributes, and the shock advice. Defaults are common guidance figures for a private chlorine outdoor pool — adjust them to your own water.",
+        "data": {
+          "free_chlorine_min": "Free chlorine — min",
+          "free_chlorine_max": "Free chlorine — max",
+          "total_chlorine_min": "Total chlorine — min",
+          "total_chlorine_max": "Total chlorine — max",
+          "bromine_min": "Bromine — min",
+          "bromine_max": "Bromine — max",
+          "ph_min": "pH — min",
+          "ph_max": "pH — max",
+          "alkalinity_min": "Total alkalinity — min",
+          "alkalinity_max": "Total alkalinity — max",
+          "cyanuric_acid_min": "Cyanuric acid (stabiliser) — min",
+          "cyanuric_acid_max": "Cyanuric acid (stabiliser) — max",
+          "hardness_min": "Total hardness — min",
+          "hardness_max": "Total hardness — max"
+        }
+      }
+    },
+    "error": {
+      "min_not_below_max": "The minimum must be below the maximum."
+    }
   }
 }
