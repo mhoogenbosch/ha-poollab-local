@@ -26,6 +26,7 @@ from homeassistant.helpers.entity_registry import (
 )
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import (
     COMBINED_CHLORINE_IDEAL_MAX,
@@ -45,17 +46,16 @@ from .const import (
     TYPE_FREE_CHLORINE,
     TYPE_TOTAL_CHLORINE,
 )
-from .coordinator import PoolLabCoordinator
+from .coordinator import PoolLabCoordinator, device_time_to_utc
 
 
 def _as_utc(timestamp: int | None) -> datetime | None:
-    """Convert a device unix timestamp to an aware datetime, or None if implausible."""
-    if not timestamp:
-        return None
-    try:
-        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
-    except (OverflowError, OSError, ValueError):
-        return None
+    """Device timestamp to real UTC.
+
+    The device keeps local wall-clock time, so the raw number must be shifted
+    by the local UTC offset - see device_time_to_utc.
+    """
+    return device_time_to_utc(timestamp, dt_util.DEFAULT_TIME_ZONE)
 
 
 def _device_info(coordinator: PoolLabCoordinator, address: str) -> DeviceInfo:

@@ -16,7 +16,7 @@ import logging
 import math
 import struct
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any
 
 from bleak.backends.device import BLEDevice
@@ -24,6 +24,7 @@ from bleak.exc import BleakError
 from bleak_retry_connector import BleakClientWithServiceCache, establish_connection
 
 from homeassistant.components import bluetooth
+from homeassistant.util import dt as dt_util
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -53,6 +54,32 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def device_time_to_utc(timestamp: int | None, tz: tzinfo) -> datetime | None:
+    """Convert a device timestamp to real UTC.
+
+    The PoolLab has no time zone setting, and the LabCOM app sets its clock to
+    local wall-clock time. The "unix time" it reports is therefore the local
+    time expressed as if it were UTC - reading it as real UTC puts every
+    measurement off by the UTC offset (two hours ahead in CEST).
+    """
+    if not timestamp:
+        return None
+    try:
+        wall = datetime.fromtimestamp(timestamp, tz=timezone.utc).replace(tzinfo=None)
+    except (OverflowError, OSError, ValueError):
+        return None
+    try:
+        return wall.replace(tzinfo=tz).astimezone(timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def utc_to_device_time(moment: datetime, tz: tzinfo) -> int:
+    """Encode a moment the way the device expects it: local wall clock."""
+    wall = moment.astimezone(tz).replace(tzinfo=timezone.utc)
+    return int(wall.timestamp())
 
 
 class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -123,13 +150,14 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             client: BleakClientWithServiceCache | None = None
             try:
                 client, response_ready = await self._connect()
-                now = int(time.time())
+                moment = dt_util.utcnow()
+                encoded = utc_to_device_time(moment, dt_util.DEFAULT_TIME_ZONE)
                 await self._send_command(
-                    client, response_ready, CMD_SET_TIME, struct.pack("<I", now)
+                    client, response_ready, CMD_SET_TIME, struct.pack("<I", encoded)
                 )
                 _LOGGER.info(
-                    "PoolLab clock set to %s",
-                    datetime.fromtimestamp(now, tz=timezone.utc).isoformat(),
+                    "PoolLab clock set to %s local time",
+                    moment.astimezone(dt_util.DEFAULT_TIME_ZONE).isoformat(),
                 )
             except TimeoutError as err:
                 raise UpdateFailed(f"Timed out setting PoolLab clock: {err}") from err
@@ -386,15 +414,12 @@ class PoolLabCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # An uninitialised or corrupted device clock (the field is a uint64)
         # would otherwise raise OverflowError/OSError out of fromtimestamp and
         # abort the whole poll with an unhelpful traceback.
-        device_time: datetime | None = None
-        if device_time_raw:
-            try:
-                device_time = datetime.fromtimestamp(device_time_raw, tz=timezone.utc)
-            except (OverflowError, OSError, ValueError):
-                _LOGGER.debug(
-                    "PoolLab reported an implausible device clock (%s); ignoring",
-                    device_time_raw,
-                )
+        device_time = device_time_to_utc(device_time_raw, dt_util.DEFAULT_TIME_ZONE)
+        if device_time_raw and device_time is None:
+            _LOGGER.debug(
+                "PoolLab reported an implausible device clock (%s); ignoring",
+                device_time_raw,
+            )
 
         return {
             # When we read the clock, so the drift can be derived later.

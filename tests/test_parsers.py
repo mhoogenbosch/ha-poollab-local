@@ -54,6 +54,16 @@ _stub(
 )
 _stub("homeassistant.helpers")
 
+# The coordinator resolves timestamps against Home Assistant's time zone.
+from zoneinfo import ZoneInfo  # noqa: E402
+_dt_util = types.ModuleType("homeassistant.util.dt")
+_dt_util.DEFAULT_TIME_ZONE = ZoneInfo("Europe/Amsterdam")
+_dt_util.utcnow = lambda: datetime.now(timezone.utc)
+_util = types.ModuleType("homeassistant.util")
+_util.dt = _dt_util
+sys.modules["homeassistant.util"] = _util
+sys.modules["homeassistant.util.dt"] = _dt_util
+
 sys.path.insert(0, str(COMPONENT.parent))
 import importlib.util
 
@@ -85,6 +95,8 @@ def check(label, got, want):
 # preamble B0 | active_id B1-2 | fw B3-4 | result_count B5-6 |
 # device time B7-14 (8 bytes) | mac B15-20 | battery B21-22
 print("GET_INFO frame:")
+# The device encodes LOCAL wall-clock time as if it were UTC, so this frame
+# says "10:30 on the device display" -> 08:30 real UTC in CEST.
 measured_clock = int(datetime(2026, 8, 1, 10, 30, tzinfo=timezone.utc).timestamp())
 info_frame = (
     bytes([0xAB])
@@ -100,7 +112,8 @@ check("fw_version", info["fw_version"], 260)
 check("result_count", info["result_count"], 3)
 check("mac_address", info["mac_address"], "60:44:7A:11:22:33")
 check("battery_level", info["battery_level"], 87)
-check("device_time", info["device_time"], datetime(2026, 8, 1, 10, 30, tzinfo=timezone.utc))
+check("device_time (10:30 lokaal -> 08:30 UTC)", info["device_time"],
+      datetime(2026, 8, 1, 8, 30, tzinfo=timezone.utc))
 
 # Implausible clock must not blow up the poll
 bad_clock = bytes([0xAB]) + struct.pack("<HHH", 1, 1, 0) + b"\xff" * 8 + b"\x00" * 6 + struct.pack("<H", 50)

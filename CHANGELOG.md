@@ -5,6 +5,23 @@ All notable changes to this fork are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 track upstream with an `-mh.N` suffix for fork releases.
 
+## [2.4.0-mh.1] - 2026-08-07
+
+### Fixed
+- **Measurement times were off by the local UTC offset — two hours ahead in CEST.** A
+  reading taken at 12:04 showed as 14:04, so `measured_at`, "Last measurement" and the
+  clock-drift sensor all sat in the future, and combined chlorine could refuse to pair
+  readings that genuinely belonged together.
+
+  The PoolLab has **no time zone setting** and the LabCOM app sets its clock to local
+  wall-clock time, so the "unix time" it reports is local time expressed as if it were
+  UTC. Reading it as real UTC is therefore wrong by the offset. Both directions now
+  convert through the Home Assistant time zone: timestamps coming out, and **Set clock**
+  going in — which previously wrote real UTC and so left the device running two hours
+  behind.
+- `tests/test_device_time.py` covers the conversion in summer and winter time, the
+  round trip, and implausible values.
+
 ## [2.3.0-mh.1] - 2026-08-02
 
 ### Added
@@ -246,6 +263,7 @@ explicitly untested on hardware.
   chlorine outdoor pool; upstream carried the values of one specific pool.
 - Battery sensor marked as diagnostic.
 
+[2.4.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.4.0-mh.1
 [2.3.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.3.0-mh.1
 [2.2.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.2.0-mh.1
 [2.1.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.1.0-mh.1

@@ -137,6 +137,12 @@ knowing where it was last heard stays useful.
 `sensor.poollab_clock_drift` shows how far the device clock has wandered. The device
 timestamps its own measurements, so when this grows, press **Set clock**.
 
+> [!NOTE]
+> The PoolLab has no time zone setting and keeps **local wall-clock time**, so its "unix
+> time" is really local time expressed as if it were UTC. The integration converts both
+> ways using your Home Assistant time zone. Read naively, every measurement would sit one
+> or two hours in the future depending on daylight saving.
+
 ### Attributes on each measurement sensor
 
 | Attribute | Meaning |
