@@ -83,6 +83,14 @@ class PoolLabShockNeededSensor(CoordinatorEntity[PoolLabCoordinator], BinarySens
         )
 
     @property
+    def available(self) -> bool:
+        # Stay available so the state can be `unknown` with its `advice`
+        # attribute intact. Inheriting CoordinatorEntity.available would make
+        # the entity `unavailable` after any failed read - and the device is
+        # switched off most of the time, so that would be its normal state.
+        return True
+
+    @property
     def icon(self) -> str:
         return "mdi:flash-alert" if self.is_on else "mdi:water-check"
 

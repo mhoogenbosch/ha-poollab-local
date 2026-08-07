@@ -5,6 +5,15 @@ All notable changes to this fork are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 track upstream with an `-mh.N` suffix for fork releases.
 
+## [2.4.1-mh.1] - 2026-08-07
+
+### Fixed
+- **The shock-advice sensor went `unavailable` instead of `unknown`** after any failed
+  read — and since the device is switched off most of the time, that was its normal
+  state. It inherited `CoordinatorEntity.available` while every other entity overrides
+  it. Now it stays available, so the state is `unknown` with the `advice` attribute
+  intact, exactly as documented.
+
 ## [2.4.0-mh.1] - 2026-08-07
 
 ### Fixed
@@ -263,6 +272,7 @@ explicitly untested on hardware.
   chlorine outdoor pool; upstream carried the values of one specific pool.
 - Battery sensor marked as diagnostic.
 
+[2.4.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.4.1-mh.1
 [2.4.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.4.0-mh.1
 [2.3.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.3.0-mh.1
 [2.2.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.2.0-mh.1
