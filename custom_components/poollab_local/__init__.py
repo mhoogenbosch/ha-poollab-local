@@ -1,12 +1,17 @@
 """The PoolLab Local integration."""
 from __future__ import annotations
 
+import logging
+
+from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ADDRESS, Platform
 from homeassistant.core import HomeAssistant
 
 from .const import CONFIGURABLE_TARGETS, DOMAIN, IDEAL_RANGES, OPT_TARGETS
 from .coordinator import PoolLabCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -35,7 +40,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # would make the whole integration - including the button - unusable
     # whenever the device simply isn't reachable right now.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    await coordinator.async_refresh()
+
+    # Only read at startup when the device is actually advertising. It is
+    # switched off most of the time, and a refresh that fails on "not seen"
+    # would be logged as an ERROR by DataUpdateCoordinator on every Home
+    # Assistant start - for what is the device's normal state. Marking the
+    # coordinator as not-yet-successful keeps `last_read_successful` false,
+    # exactly as the failed attempt used to. A device that is on but cannot
+    # be talked to still goes through the refresh and is still logged.
+    if bluetooth.async_address_present(hass, address, connectable=True):
+        await coordinator.async_refresh()
+    else:
+        coordinator.last_update_success = False
+        _LOGGER.debug(
+            "PoolLab %s is not advertising; skipping the startup read", address
+        )
 
     return True
 

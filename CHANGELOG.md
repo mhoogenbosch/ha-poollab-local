@@ -5,6 +5,20 @@ All notable changes to this fork are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 track upstream with an `-mh.N` suffix for fork releases.
 
+## [2.4.2-mh.1] - 2026-11-13
+
+### Fixed
+- **Every Home Assistant start logged an ERROR when the PoolLab was switched off**
+  ("was not seen by any Bluetooth adapter/proxy"). The integration always tried one read at
+  startup, and Home Assistant logs the first failed read at error level. Since the device is
+  off most of the time, that error showed up on practically every restart.
+
+  The startup read now only happens when the device is actually advertising; otherwise it is
+  skipped with a debug message. Nothing else changes: sensors keep their restored values,
+  `last_read_successful` still starts as `false`, and **Fetch now** (or an automation on the
+  **Reachable** sensor) reads the device as before. A device that is on but cannot be talked
+  to still goes through the read and is still logged.
+
 ## [2.4.1-mh.1] - 2026-08-07
 
 ### Fixed
@@ -272,6 +286,7 @@ explicitly untested on hardware.
   chlorine outdoor pool; upstream carried the values of one specific pool.
 - Battery sensor marked as diagnostic.
 
+[2.4.2-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.4.2-mh.1
 [2.4.1-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.4.1-mh.1
 [2.4.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.4.0-mh.1
 [2.3.0-mh.1]: https://github.com/mhoogenbosch/ha-poollab-local/releases/tag/v2.3.0-mh.1
